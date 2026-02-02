@@ -550,10 +550,22 @@ class IPTVScan {
 }
 
 // Handle scan request
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['url'])) {
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     header('Content-Type: application/json');
-    $scanner = new IPTVScan();
-    $provider_name = $_POST['provider_name'] ?? '';
-    $scanner->scanHost($_POST['url'], $provider_name);
+    
+    // Get JSON input
+    $input = json_decode(file_get_contents('php://input'), true);
+    
+    // Support both JSON and form-urlencoded
+    $url = $input['url'] ?? $_POST['url'] ?? null;
+    $provider_name = $input['provider_name'] ?? $_POST['provider_name'] ?? '';
+    
+    if ($url) {
+        $scanner = new IPTVScan();
+        $scanner->scanHost($url, $provider_name);
+    } else {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'error' => 'Missing url parameter']);
+    }
 }
 ?>
