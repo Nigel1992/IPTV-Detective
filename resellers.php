@@ -1,4 +1,9 @@
 <?php
+// Prevent any output before JSON
+error_reporting(0);
+ini_set('display_errors', 0);
+ob_start();
+
 header('Content-Type: application/json');
 header('Access-Control-Allow-Origin: *');
 
@@ -117,6 +122,9 @@ try {
     
     $conn->close();
     
+    // Clear any buffered output and send JSON
+    ob_end_clean();
+    
     echo json_encode([
         'success' => true,
         'resellers' => $resellers,
@@ -126,6 +134,7 @@ try {
     ], JSON_PRETTY_PRINT);
     
 } catch (Exception $e) {
+    ob_end_clean();
     http_response_code(500);
     echo json_encode([
         'success' => false,
