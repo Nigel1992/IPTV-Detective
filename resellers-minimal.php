@@ -14,8 +14,8 @@ if (file_exists('config.php')) {
     try {
         require_once 'config.php';
         
-        // Try connecting
-        $conn = @mysqli_connect(DB_HOST, DB_USER, DB_PASS, DB_NAME);
+        // Try connecting - use DB_PASSWORD not DB_PASS
+        $conn = @mysqli_connect(DB_HOST, DB_USER, DB_PASSWORD, DB_NAME);
         
         if ($conn) {
             // Simple query - just get resellers
