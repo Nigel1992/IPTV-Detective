@@ -63,13 +63,25 @@ Open `index.html` in your browser
 
 ## Usage
 
-Enter an IPTV trial URL and click "Scan" to see:
+Enter an IPTV URL (with or without port) and click "Scan" to analyze:
+
+**Supported URL formats:**
+- `http://domain.com/path`
+- `http://domain.com:8080/player_api.php`
+- `domain.com:25461/get.php`
+- `http://192.168.1.1:8000/playlist.m3u8`
+
+**Results include:**
 - Real Host IP Address
 - Country Location
 - Organization/ISP
 - ASN Information
 - Server Software Signature
+- Panel Type Detection (Xtream Codes, Stalker, M3U)
+- Domain Age (from WHOIS)
+- Original Provider Detection (via IP clustering)
 - Reseller Probability Score
+- Upstream Provider Score
 
 ## API Integration
 
