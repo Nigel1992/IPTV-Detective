@@ -18,8 +18,8 @@ if (file_exists('config.php')) {
         $conn = @mysqli_connect(DB_HOST, DB_USER, DB_PASSWORD, DB_NAME);
         
         if ($conn) {
-            // Simple query - just get resellers
-            $result = @mysqli_query($conn, "SELECT provider_name, provider_count FROM iptv_scans WHERE provider_count > 1 ORDER BY provider_count DESC LIMIT 20");
+            // Query the CORRECT table: scanned_hosts (not iptv_scans)
+            $result = @mysqli_query($conn, "SELECT provider_name, provider_count FROM scanned_hosts WHERE provider_count > 1 ORDER BY provider_count DESC LIMIT 20");
             
             if ($result) {
                 while ($row = @mysqli_fetch_assoc($result)) {
