@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IPTV Forensics Detective</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <style>
+        :root {
+            --primary-color: #1a1a1a;
+            --secondary-color: #2d2d2d;
+            --accent-color: #00d4ff;
+            --accent-hover: #00b8d4;
+            --success-color: #10b981;
+            --warning-color: #f59e0b;
+            --danger-color: #ef4444;
+            --text-primary: #e5e7eb;
+            --text-secondary: #9ca3af;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: linear-gradient(135deg, var(--primary-color) 0%, #0f0f0f 100%);
+            color: var(--text-primary);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            min-height: 100vh;
+            position: relative;
+            overflow-x: hidden;
+        }
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%2300d4ff' fill-opacity='0.05'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+            pointer-events: none;
+            z-index: 0;
+        }
+        .container-wrapper {
+            position: relative;
+            z-index: 1;
+            padding: 40px 20px;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        .header { text-align: center; margin-bottom: 50px; animation: slideDown 0.6s ease-out; }
+        @keyframes slideDown {
+            from { opacity: 0; transform: translateY(-30px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .header h1 {
+            font-size: 3em;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--accent-color), #0099cc);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 10px;
+        }
+        .header p { font-size: 1.1em; color: var(--text-secondary); margin: 0; }
+        .search-container { max-width: 600px; margin: 0 auto 40px; animation: slideUp 0.6s ease-out; }
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(30px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .search-box {
+            background: var(--secondary-color);
+            border: 2px solid rgba(0, 212, 255, 0.2);
+            border-radius: 12px;
+            padding: 15px;
+            display: flex;
+            gap: 10px;
+            transition: all 0.3s ease;
+        }
+        .search-box:focus-within { border-color: var(--accent-color); box-shadow: 0 0 20px rgba(0, 212, 255, 0.1); }
+        .search-box input {
+            flex: 1;
+            background: transparent;
+            border: none;
+            color: var(--text-primary);
+            outline: none;
+            font-size: 1em;
+        }
+        .search-box input::placeholder { color: var(--text-secondary); }
+        .search-box button {
+            background: linear-gradient(135deg, var(--accent-color), #0099cc);
+            border: none;
+            color: #000;
+            padding: 8px 25px;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .search-box button:hover { background: linear-gradient(135deg, var(--accent-hover), #008ab8); transform: translateY(-2px); box-shadow: 0 8px 16px rgba(0, 212, 255, 0.2); }
+        .search-box button:active { transform: translateY(0); }
+        .loading-spinner { display: none; text-align: center; padding: 20px; }
+        .spinner-border { color: var(--accent-color); width: 40px; height: 40px; }
+        .results-container { max-width: 800px; margin: 0 auto; animation: fadeIn 0.5s ease-out; }
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        .result-card {
+            background: var(--secondary-color);
+            border: 2px solid rgba(0, 212, 255, 0.1);
+            border-radius: 12px;
+            padding: 30px;
+            margin-bottom: 20px;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        .result-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(0, 212, 255, 0.1), transparent);
+            transition: left 0.5s ease;
+        }
+        .result-card:hover { border-color: var(--accent-color); box-shadow: 0 8px 32px rgba(0, 212, 255, 0.15); transform: translateY(-5px); }
+        .result-card:hover::before { left: 100%; }
+        .card-header-section { display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; padding-bottom: 20px; border-bottom: 2px solid rgba(0, 212, 255, 0.1); }
+        .card-title { font-size: 1.5em; font-weight: 700; color: var(--accent-color); margin: 0; }
+        .scan-timestamp { font-size: 0.85em; color: var(--text-secondary); margin-top: 5px; }
+        .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px; }
+        @media (max-width: 600px) { .info-grid { grid-template-columns: 1fr; } }
+        .info-item { display: flex; flex-direction: column; }
+        .info-label { font-size: 0.9em; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; font-weight: 600; }
+        .info-value { font-size: 1.1em; color: var(--text-primary); font-weight: 500; word-break: break-all; }
+        .info-value.highlight { color: var(--accent-color); font-weight: 600; }
+        .probability-section { background: rgba(0, 212, 255, 0.05); border-left: 4px solid var(--accent-color); padding: 20px; border-radius: 8px; margin-top: 20px; }
+        .probability-label { font-size: 0.9em; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 12px; font-weight: 600; }
+        .probability-meter { width: 100%; height: 30px; background: rgba(255, 255, 255, 0.05); border-radius: 8px; overflow: hidden; position: relative; border: 1px solid rgba(0, 212, 255, 0.2); }
+        .probability-bar {
+            height: 100%;
+            background: linear-gradient(90deg, var(--success-color), var(--warning-color), var(--danger-color));
+            width: 0%;
+            transition: width 0.6s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            font-size: 0.85em;
+        }
+        .probability-text { margin-top: 10px; font-size: 0.95em; color: var(--text-primary); }
+        .reseller-badge { display: inline-block; padding: 6px 16px; border-radius: 20px; font-size: 0.85em; font-weight: 600; margin-top: 10px; }
+        .reseller-badge.yes { background: rgba(239, 68, 68, 0.2); color: #fca5a5; border: 1px solid #f87171; }
+        .reseller-badge.no { background: rgba(16, 185, 129, 0.2); color: #86efac; border: 1px solid #34d399; }
+        .error-message { background: rgba(239, 68, 68, 0.1); border: 2px solid var(--danger-color); color: #fca5a5; padding: 20px; border-radius: 12px; margin-bottom: 20px; display: flex; align-items: center; gap: 15px; }
+        .error-message i { font-size: 1.5em; }
+        .empty-state { text-align: center; padding: 60px 20px; }
+        .empty-state i { font-size: 4em; color: var(--text-secondary); margin-bottom: 20px; opacity: 0.5; }
+        .empty-state p { color: var(--text-secondary); font-size: 1.1em; }
+        .footer { text-align: center; color: var(--text-secondary); font-size: 0.85em; margin-top: auto; padding-top: 30px; }
+    </style>
+</head>
+<body>
+    <div class="container-wrapper">
+        <div class="header">
+            <h1><i class="bi bi-shield-check"></i> IPTV Forensics</h1>
+            <p>Unmasking IPTV Provider Information & Reseller Detection</p>
+        </div>
+        <div class="search-container">
+            <div class="search-box">
+                <input type="text" id="providerNameInput" placeholder="Provider/Service Name (optional - e.g., ABC IPTV, Reseller X)" autocomplete="off" style="border-bottom: 1px solid rgba(0, 212, 255, 0.2); margin-bottom: 10px; padding-bottom: 10px;">
+                <input type="text" id="urlInput" placeholder="Enter IPTV trial URL (e.g., iptv.example.com or http://iptv.example.com)" autocomplete="off">
+                <button type="button" onclick="scanHost()"><i class="bi bi-search"></i> Scan</button>
+            </div>
+        </div>
+        <div class="loading-spinner" id="loadingSpinner">
+            <div class="spinner-border" role="status"><span class="visually-hidden">Loading...</span></div>
+            <p style="margin-top: 15px; color: var(--text-secondary);">Scanning host...</p>
+        </div>
+        <div class="results-container" id="resultsContainer">
+            <div class="empty-state">
+                <i class="bi bi-radar"></i>
+                <p>Enter an IPTV trial URL to begin scanning</p>
+            </div>
+        </div>
+        <div class="footer">
+            <p>IPTV Forensics Detective v1.0 | Results are cached for 24 hours</p>
+        </div>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        const urlInput = document.getElementById('urlInput');
+        const providerNameInput = document.getElementById('providerNameInput');
+        const loadingSpinner = document.getElementById('loadingSpinner');
+        const resultsContainer = document.getElementById('resultsContainer');
+        urlInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') scanHost();
+        });
+        providerNameInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') scanHost();
+        });
+        async function scanHost() {
+            const url = urlInput.value.trim();
+            const providerName = providerNameInput.value.trim();
+            if (!url) {
+                showError('Please enter a URL');
+                return;
+            }
+            loadingSpinner.style.display = 'block';
+            resultsContainer.innerHTML = '';
+            try {
+                const response = await fetch('scan.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ url: url, provider_name: providerName })
+                });
+                
+                // First check if response is ok
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    console.error('HTTP Error:', response.status, errorText);
+                    showError('Server error (HTTP ' + response.status + '): ' + errorText.substring(0, 100));
+                    return;
+                }
+                
+                // Try to parse as JSON
+                let data;
+                try {
+                    data = await response.json();
+                } catch (jsonError) {
+                    const responseText = await response.text();
+                    console.error('JSON Parse Error:', jsonError);
+                    console.error('Response was:', responseText);
+                    showError('Invalid server response. Check browser console for details.');
+                    return;
+                }
+                
+                if (data.success) {
+                    displayResults(data.data);
+                } else {
+                    showError(data.error || 'Scan failed');
+                }
+            } catch (error) {
+                showError('Network error: ' + error.message);
+                console.error('Fetch error:', error);
+            } finally {
+                loadingSpinner.style.display = 'none';
+            }
+        }
+        function displayResults(data) {
+            const resellerText = data.is_datacenter_reseller ? 'Yes - Likely Reseller' : 'No - Appears Direct';
+            const resellerClass = data.is_datacenter_reseller ? 'yes' : 'no';
+            const createdAt = new Date().toLocaleString();
+            
+            let providerNameHtml = '';
+            if (data.provider_name && typeof data.provider_name === 'string') {
+                const providers = data.provider_name.split(' | ');
+                const providerCount = data.provider_count || providers.length;
+                
+                let providerStyle = 'background: rgba(0, 212, 255, 0.1); border: 1px solid var(--accent-color); color: var(--accent-color);';
+                let warningHtml = '';
+                
+                if (providerCount > 1) {
+                    providerStyle = 'background: rgba(239, 68, 68, 0.2); border: 1px solid #f87171; color: #fca5a5;';
+                    warningHtml = `<div style="margin-top: 8px; font-weight: 600;"><i class="bi bi-exclamation-triangle-fill"></i> ⚠️ RESELLER DETECTED - ${providerCount} providers using same backend!</div>`;
+                }
+                
+                // Show upstream provider indicator
+                if (data.is_likely_upstream) {
+                    warningHtml += `<div style="margin-top: 8px; font-weight: 600; color: #86efac;"><i class="bi bi-shield-check"></i> ✓ LIKELY UPSTREAM PROVIDER (Score: ${data.upstream_score}/100)</div>`;
+                }
+                
+                // Show original provider from IP clustering
+                if (data.original_provider_info && data.original_provider_info.original_domain) {
+                    warningHtml += `<div style="margin-top: 8px; font-weight: 600; color: #fbbf24; background: rgba(251, 191, 36, 0.1); padding: 8px; border-radius: 4px;"><i class="bi bi-crown-fill"></i> 👑 ORIGINAL PROVIDER: <strong>${escapeHtml(data.original_provider_info.original_domain)}</strong> (${data.original_provider_info.age_days} days old) - Found ${data.original_provider_info.related_domains} domains on this IP</div>`;
+                }
+                
+                providerNameHtml = `
+                    <div class="alert alert-info" style="${providerStyle} margin-bottom: 20px;">
+                        <strong><i class="bi bi-tag-fill"></i> Provider${providerCount > 1 ? 's' : ''}:</strong> ${escapeHtml(data.provider_name)}
+                        ${warningHtml}
+                    </div>
+                `;
+            }
+            
+            const html = `
+                <div class="result-card">
+                    ${providerNameHtml}
+                    <div class="card-header-section">
+                        <div>
+                            <h3 class="card-title">${escapeHtml(data.domain)}</h3>
+                            <p class="scan-timestamp"><i class="bi bi-clock-history"></i> Scanned: ${createdAt}</p>
+                        </div>
+                    </div>
+                    <div class="info-grid">
+                        <div class="info-item">
+                            <span class="info-label">📍 Real Host IP</span>
+                            <span class="info-value highlight">${escapeHtml(data.resolved_ip)}</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">🌍 Country</span>
+                            <span class="info-value">${escapeHtml(data.country_name || 'Unknown')}</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">🏢 Organization</span>
+                            <span class="info-value">${escapeHtml(data.organization || data.hosted_provider || 'Unknown')}</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">🔷 ASN</span>
+                            <span class="info-value">${escapeHtml(data.asn || 'N/A')}</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">⚙️ Server Header</span>
+                            <span class="info-value">${escapeHtml(data.server_header || 'Not Detected')}</span>
+                        </div>                        <div class="info-item">
+                            <span class="info-label">📺 Panel Type</span>
+                            <span class="info-value ${data.panel_type ? 'highlight' : ''}">${escapeHtml(data.panel_type || 'Not Detected')}</span>
+                            ${!data.panel_type ? '<div style="margin-top: 8px; font-size: 0.85em; color: var(--warning-color); background: rgba(245, 158, 11, 0.1); padding: 8px; border-radius: 4px; border-left: 3px solid var(--warning-color);"><i class="bi bi-info-circle"></i> <strong>Tip:</strong> Provide full URL with credentials (e.g., http://panel.xyz/get.php?username=user&password=pass) for panel detection</div>' : ''}
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">📅 Domain Age</span>
+                            <span class="info-value">${data.domain_age_days ? Math.floor(data.domain_age_days) + ' days' : 'Unknown'}</span>
+                        </div>                        <div class="info-item">
+                            <span class="info-label">Original URL</span>
+                            <span class="info-value" style="font-size: 0.9em; overflow-wrap: break-word;">${escapeHtml(data.original_url)}</span>
+                        </div>
+                    </div>
+                    <div class="probability-section">
+                        <div class="probability-label">Reseller Probability Score</div>
+                        <div class="probability-meter">
+                            <div class="probability-bar" style="width: ${data.reseller_probability}%;">
+                                <span>${data.reseller_probability}%</span>
+                            </div>
+                        </div>
+                        <div class="probability-text">
+                            <strong>Reseller Detected:</strong> <span class="reseller-badge ${resellerClass}">${resellerText}</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+            resultsContainer.innerHTML = html;
+        }
+        function showError(message) {
+            resultsContainer.innerHTML = `
+                <div class="error-message">
+                    <i class="bi bi-exclamation-circle"></i>
+                    <div>
+                        <strong>Error:</strong> ${escapeHtml(message)}
+                    </div>
+                </div>
+            `;
+        }
+        function escapeHtml(text) {
+            if (!text || typeof text !== 'string') return '';
+            const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' };
+            return text.replace(/[&<>"']/g, m => map[m]);
+        }
+    </script>
+</body>
+</html>
