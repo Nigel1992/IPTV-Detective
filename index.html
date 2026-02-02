@@ -798,41 +798,39 @@
                                     <div class="reseller-stat">
                                         <strong>${reseller.ips.length}</strong> IPs
                                     </div>
-                                    <div class="reseller-stat">
-                                        Avg age: <strong>${reseller.avg_age_days}</strong> days
-                                    </div>
                                 </div>
                             </div>
                             
                             <div class="reseller-domains">
                                 <div class="reseller-section-title">
-                                    <i class="bi bi-globe2"></i> Associated Domains
+                                    <i class="bi bi-globe2"></i> Associated Domains (${reseller.domains.length})
                                 </div>
-                                <div class="domain-list">
-                                    ${reseller.domains.map(domain => `<div class="domain-tag">${escapeHtml(domain)}</div>`).join('')}
+                                <div style="display: flex; flex-direction: column; gap: 10px;">
+                                    ${reseller.domains.map(d => `
+                                        <div style="background: rgba(0,0,0,0.2); border-left: 3px solid var(--accent-color); padding: 10px; border-radius: 4px;">
+                                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
+                                                <strong style="font-family: monospace; color: var(--accent-color);">${escapeHtml(d.domain || 'Unknown')}</strong>
+                                                ${d.age_days > 0 ? `<span style="font-size: 0.85em; color: var(--text-secondary);">${d.age_days} days old</span>` : ''}
+                                            </div>
+                                            ${d.ip ? `<div style="font-size: 0.85em; color: var(--text-secondary);"><i class="bi bi-hdd-network"></i> IP: <code>${escapeHtml(d.ip)}</code></div>` : ''}
+                                            ${d.panel_type ? `<div style="font-size: 0.85em; color: var(--success-color);"><i class="bi bi-check-circle"></i> Panel: ${escapeHtml(d.panel_type)}</div>` : ''}
+                                        </div>
+                                    `).join('')}
                                 </div>
                             </div>
                             
                             ${reseller.upstream_providers.length > 0 ? `
                                 <div class="upstream-connections">
                                     <div class="reseller-section-title">
-                                        <i class="bi bi-arrow-up-circle"></i> Upstream Provider Connections
+                                        <i class="bi bi-arrow-up-circle"></i> Related Providers
                                     </div>
-                                    ${reseller.upstream_providers.map(upstream => `
+                                    ${reseller.upstream_providers.map(up => `
                                         <div class="upstream-item">
                                             <div class="upstream-info">
                                                 <i class="bi bi-shield-check"></i>
                                                 <div>
-                                                    <div class="upstream-name">${escapeHtml(upstream.name)}</div>
-                                                    <div class="upstream-details">
-                                                        ${escapeHtml(upstream.domain)} • 
-                                                        ${upstream.age_days} days old • 
-                                                        Score: ${upstream.upstream_score.toFixed(1)}
-                                                    </div>
+                                                    <div class="upstream-name">${escapeHtml(up.name)}</div>
                                                 </div>
-                                            </div>
-                                            <div class="connection-badge">
-                                                <i class="bi bi-diagram-3"></i> ${escapeHtml(upstream.shared_ip)}
                                             </div>
                                         </div>
                                     `).join('')}

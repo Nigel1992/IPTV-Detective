@@ -1,27 +1,33 @@
 <?php
 // Prevent any output before JSON
-error_reporting(E_ALL);
-ini_set('display_errors', 0);
+@error_reporting(0);
+@ini_set('display_errors', 0);
+
+// Clean any output buffer
+while (ob_get_level()) {
+    ob_end_clean();
+}
 ob_start();
 
 header('Content-Type: application/json');
 header('Access-Control-Allow-Origin: *');
+http_response_code(200);
 
 try {
     if (!file_exists('config.php')) {
         throw new Exception("Configuration file not found");
     }
     
-    require_once 'config.php';
+    @require_once 'config.php';
     
-    // Create connection with explicit port
-    $conn = @new mysqli(DB_HOST, DB_USER, DB_PASS, DB_NAME, 3306);
+    // Create connection
+    $conn = @new mysqli(DB_HOST, DB_USER, DB_PASS, DB_NAME);
     
     if ($conn->connect_error) {
-        throw new Exception("Database connection failed: " . $conn->connect_error);
+        throw new Exception("Database connection failed. Please check your database credentials.");
     }
     
-    $conn->set_charset("utf8mb4");
+    @$conn->set_charset("utf8mb4");
     $conn->set_charset("utf8mb4");
     
     // Simplified query - just get basic reseller info first
@@ -105,14 +111,16 @@ try {
     ], JSON_PRETTY_PRINT);
     
 } catch (Exception $e) {
-    ob_end_clean();
-    http_response_code(200); // Change to 200 so JavaScript can read the error
+    // Clear all buffers
+    while (ob_get_level()) {
+        ob_end_clean();
+    }
+    
     echo json_encode([
         'success' => false,
-        'error' => $e->getMessage(),
-        'file' => basename($e->getFile()),
-        'line' => $e->getLine()
+        'error' => $e->getMessage()
     ]);
+    exit;
 }
 ?>
                     upstream_score
