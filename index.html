@@ -594,12 +594,14 @@
                     return;
                 }
                 
+                // Get response text first, then parse
+                const responseText = await response.text();
+                
                 // Try to parse as JSON
                 let data;
                 try {
-                    data = await response.json();
+                    data = JSON.parse(responseText);
                 } catch (jsonError) {
-                    const responseText = await response.text();
                     console.error('JSON Parse Error:', jsonError);
                     console.error('Response was:', responseText);
                     showError('Invalid server response. Check browser console for details.');
