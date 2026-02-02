@@ -28,44 +28,42 @@ try {
     $resellers = [];
     
     while ($row = $result->fetch_assoc()) {
-        // Get domains - separate simple query
-        $domainQuery = "SELECT domain FROM iptv_scans WHERE provider_name = ? LIMIT 10";
-        $stmt = @$conn->prepare($domainQuery);
+        $providerName = $row['provider_name'];
+        $domains = [];
+        $ips = [];
         
-        if ($stmt) {
-            $stmt->bind_param("s", $row['provider_name']);
-            $stmt->execute();
-            $domainResult = $stmt->get_result();
-            
-            $domains = [];
+        // Get domains - use simple query without prepared statement
+        $domainQuery = "SELECT domain FROM iptv_scans 
+                       WHERE provider_name = '" . $conn->real_escape_string($providerName) . "' 
+                       LIMIT 10";
+        $domainResult = @$conn->query($domainQuery);
+        
+        if ($domainResult) {
             while ($d = $domainResult->fetch_assoc()) {
-                $domains[] = $d['domain'];
+                if (!empty($d['domain'])) {
+                    $domains[] = $d['domain'];
+                }
             }
-            $stmt->close();
-        } else {
-            $domains = [];
         }
         
-        // Get IPs - separate simple query
-        $ipQuery = "SELECT DISTINCT resolved_ip FROM iptv_scans WHERE provider_name = ? AND resolved_ip != '' LIMIT 5";
-        $stmt = @$conn->prepare($ipQuery);
+        // Get IPs - use simple query without prepared statement
+        $ipQuery = "SELECT DISTINCT resolved_ip FROM iptv_scans 
+                   WHERE provider_name = '" . $conn->real_escape_string($providerName) . "' 
+                   AND resolved_ip IS NOT NULL 
+                   AND resolved_ip != '' 
+                   LIMIT 5";
+        $ipResult = @$conn->query($ipQuery);
         
-        if ($stmt) {
-            $stmt->bind_param("s", $row['provider_name']);
-            $stmt->execute();
-            $ipResult = $stmt->get_result();
-            
-            $ips = [];
+        if ($ipResult) {
             while ($i = $ipResult->fetch_assoc()) {
-                $ips[] = $i['resolved_ip'];
+                if (!empty($i['resolved_ip'])) {
+                    $ips[] = $i['resolved_ip'];
+                }
             }
-            $stmt->close();
-        } else {
-            $ips = [];
         }
         
         $resellers[] = [
-            'name' => $row['provider_name'],
+            'name' => $providerName,
             'domain_count' => (int)$row['provider_count'],
             'domains' => $domains,
             'ips' => $ips,
