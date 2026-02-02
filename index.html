@@ -61,7 +61,23 @@
             margin-bottom: 10px;
         }
         .header p { font-size: 1.1em; color: var(--text-secondary); margin: 0; }
-        .search-container { max-width: 600px; margin: 0 auto 40px; animation: slideUp 0.6s ease-out; }
+        .intro-section {
+            text-align: center;
+            max-width: 600px;
+            margin: 0 auto 20px;
+            animation: slideUp 0.6s ease-out;
+        }
+        .intro-section .logo-icon {
+            font-size: 2.5em;
+            color: var(--accent-color);
+            margin-bottom: 10px;
+        }
+        .intro-section p {
+            font-size: 1em;
+            color: var(--text-secondary);
+            margin: 0;
+        }
+        .search-container { max-width: 600px; margin: 0 auto 40px; animation: slideUp 0.6s ease-out 0.1s; animation-fill-mode: both; }
         @keyframes slideUp {
             from { opacity: 0; transform: translateY(30px); }
             to { opacity: 1; transform: translateY(0); }
@@ -188,7 +204,7 @@
         .footer { text-align: center; color: var(--text-secondary); font-size: 0.85em; margin-top: auto; padding-top: 30px; }
         
         /* Stats Section */
-        .stats-container { max-width: 1200px; margin: 0 auto 40px; }
+        .stats-container { max-width: 1200px; margin: 0 auto 30px; }
         .stats-grid { 
             display: flex;
             gap: 15px;
@@ -199,14 +215,14 @@
         .stat-card {
             background: var(--secondary-color);
             border: 2px solid rgba(0, 212, 255, 0.2);
-            border-radius: 12px;
-            padding: 20px;
+            border-radius: 10px;
+            padding: 12px 15px;
             text-align: center;
             transition: all 0.3s ease;
             position: relative;
             overflow: hidden;
             flex: 1;
-            min-width: 180px;
+            min-width: 140px;
         }
         .stat-card::before {
             content: '';
@@ -214,21 +230,21 @@
             top: 0;
             left: 0;
             width: 100%;
-            height: 3px;
+            height: 2px;
             background: linear-gradient(90deg, var(--accent-color), #0099cc);
         }
         .stat-card:hover {
-            transform: translateY(-5px);
+            transform: translateY(-3px);
             border-color: var(--accent-color);
-            box-shadow: 0 10px 30px rgba(0, 212, 255, 0.2);
+            box-shadow: 0 8px 20px rgba(0, 212, 255, 0.15);
         }
         .stat-icon {
-            font-size: 2em;
+            font-size: 1.4em;
             color: var(--accent-color);
-            margin-bottom: 10px;
+            margin-bottom: 6px;
         }
         .stat-number {
-            font-size: 2.5em;
+            font-size: 1.8em;
             font-weight: 700;
             background: linear-gradient(135deg, var(--accent-color), #0099cc);
             -webkit-background-clip: text;
@@ -237,11 +253,11 @@
             line-height: 1.2;
         }
         .stat-label {
-            font-size: 0.9em;
+            font-size: 0.75em;
             color: var(--text-secondary);
             text-transform: uppercase;
-            letter-spacing: 1px;
-            margin-top: 8px;
+            letter-spacing: 0.5px;
+            margin-top: 5px;
         }
     </style>
 </head>
@@ -249,7 +265,6 @@
     <div class="container-wrapper">
         <div class="header">
             <h1><i class="bi bi-shield-check"></i> IPTV Forensics</h1>
-            <p>Unmasking IPTV Provider Information & Reseller Detection</p>
         </div>
         
         <!-- Stats Section -->
@@ -276,6 +291,12 @@
                     <div class="stat-label">Upstream Providers</div>
                 </div>
             </div>
+        </div>
+        
+        <!-- Intro Section -->
+        <div class="intro-section">
+            <div class="logo-icon"><i class="bi bi-search"></i></div>
+            <p>Enter an IPTV trial URL to begin scanning</p>
         </div>
         
         <div class="search-container">
