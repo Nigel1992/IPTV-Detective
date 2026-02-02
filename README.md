@@ -1,6 +1,6 @@
 # IPTV Forensics Detective
 
-🔴 **[Live Demo](https://astrolume.infinityfreeapp.com/IPTV/)** - Try it now!
+🌐 **[Live Site](https://astrolume.infinityfreeapp.com/IPTV/)** - Start scanning now!
 
 A comprehensive forensics tool for analyzing IPTV trial URLs, unmasking provider information, and detecting reseller patterns.
 
