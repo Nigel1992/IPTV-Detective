@@ -97,7 +97,130 @@ Enter an IPTV URL (with or without port) and click "Scan" to analyze:
 - **Get Key**: https://www.ip2whois.com
 - **Docs**: https://www.ip2whois.com/api
 
+## Reseller Detection (Enhanced)
+
+The tool now uses a **multi-factor confidence scoring system** to identify reseller networks:
+
+### Detection Methods
+
+| Method | Weight | How It Works |
+|--------|--------|-------------|
+| **ASN Analysis** | 35% | Groups domains by datacenter ASN (DigitalOcean, AWS, OVH, Hetzner, etc.) |
+| **Nameserver Clustering** | 30% | Identifies shared DNS infrastructure across multiple domains |
+| **SSL Fingerprinting** | 20% | Detects domains using identical SSL certificates |
+| **Registration Patterns** | 15% | Finds batch-registered domains (same registrar, email, date) |
+
+### Confidence Scoring
+
+- **0-40%**: Weak reseller signal - likely independent operators
+- **40-70%**: Moderate reseller signal - probable shared infrastructure
+- **70-90%**: Strong reseller signal - definite infrastructure sharing
+- **90-100%**: Very strong reseller signal - nearly identical infrastructure
+
+### Cluster Evidence Display
+
+When viewing resellers, you'll see which factors triggered detection:
+
+- **ASN Shared**: Multiple domains on same datacenter network
+- **NS Shared**: Multiple domains using same nameservers
+- **SSL Shared**: Multiple domains with identical SSL certificates
+- **Batch Reg**: Multiple domains registered close together
+
+### Example
+
+Two domains detected as resellers if:
+1. Both resolve to IPs in same ASN (OVH) → +35%
+2. Both use ns1.panel.com, ns2.panel.com → +30%
+3. Both have certificate CN: panel.example.com → +20%
+4. Both registered within 7 days → +15%
+
+**Total Confidence: 100%** (Definite reseller network)
+
+## Database Schema
+
+### New Enhanced Columns
+
+The enhanced scanner (`scan-enhanced.php`) collects:
+
+```sql
+asn_block              VARCHAR(100)      -- ASN number block
+asn_name               VARCHAR(255)      -- ASN organization name
+nameserver_hash        VARCHAR(64)       -- SHA256 hash of nameservers
+nameservers            TEXT              -- Comma-separated nameserver list
+ssl_cert_hash          VARCHAR(64)       -- SHA256 hash of SSL cert
+ssl_issuer             VARCHAR(255)      -- SSL certificate issuer
+ssl_common_names       TEXT              -- SSL SAN domains
+domain_registrar       VARCHAR(255)      -- Domain registrar
+domain_reg_date        DATE              -- Domain registration date
+domain_reg_email       VARCHAR(255)      -- Registrant email
+panel_fingerprint      VARCHAR(255)      -- MD5 of panel response
+registration_pattern   VARCHAR(50)       -- 'batch_registration' or 'same_registrant'
+confidence_score       INT               -- Overall reseller confidence (0-100)
+relationship_reasons   TEXT              -- Human-readable detection reasons
+asn_reseller_confidence INT              -- ASN confidence (0-100)
+ns_reseller_confidence INT               -- Nameserver confidence (0-100)
+cert_reseller_confidence INT             -- SSL cert confidence (0-100)
+reg_pattern_confidence INT               -- Registration pattern confidence (0-100)
+```
+
+### Running Database Migration
+
+```bash
+# Copy database_enhanced.sql to your server and run:
+mysql -u your_user -p your_database < database_enhanced.sql
+```
+
+## API Endpoints
+
+### scan-enhanced.php
+
+Advanced scanning with full feature set:
+
+```
+POST /scan-enhanced.php
+Parameters:
+  - url: IPTV URL to scan
+  - provider_name: Optional provider name for reseller linking
+  
+Returns:
+  - confidence_score: 0-100
+  - asn_reseller_confidence: 0-100
+  - ns_reseller_confidence: 0-100
+  - cert_reseller_confidence: 0-100
+  - relationship_reasons: Text explanation
+  - cluster_evidence: { asn_clustering, nameserver_clustering, ... }
+```
+
+### resellers-advanced.php
+
+Get all detected reseller networks with cluster evidence:
+
+```
+GET /resellers-advanced.php
+
+Returns:
+  {
+    "resellers": [
+      {
+        "name": "provider1 | provider2",
+        "domain_count": 15,
+        "confidence_score": 87,
+        "cluster_evidence": {
+          "asn_clustering": 3,
+          "nameserver_clustering": 15,
+          "cert_clustering": 1,
+          "registration_pattern_clustering": 5
+        },
+        "domains": [...],
+        "related_providers": [...]
+      }
+    ],
+    "clusters": [...]
+  }
+```
+
 ## Reseller Scoring
+````
 
 Score based on:
 - **Data Center Detection** (0-80%): OVH, Hetzner, Linode, etc.
