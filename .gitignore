@@ -4,6 +4,11 @@ config.php
 .env.local
 *.log
 
+# Debug and Test Files
+debug-*.php
+test-*.php
+test.php
+
 # IDE
 .vscode/
 .idea/
