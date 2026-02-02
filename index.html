@@ -580,7 +580,7 @@
             loadingSpinner.style.display = 'block';
             resultsContainer.innerHTML = '';
             try {
-                const response = await fetch('scan.php', {
+                const response = await fetch('scan-enhanced.php', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ url: url, provider_name: providerName })
