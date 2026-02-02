@@ -225,6 +225,12 @@
             flex: 1;
             min-width: 140px;
         }
+        .stat-card.clickable {
+            cursor: pointer;
+        }
+        .stat-card.clickable:active {
+            transform: translateY(-1px);
+        }
         .stat-card::before {
             content: '';
             position: absolute;
@@ -260,6 +266,189 @@
             letter-spacing: 0.5px;
             margin-top: 5px;
         }
+        
+        /* Reseller Modal */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.85);
+            backdrop-filter: blur(5px);
+            z-index: 9999;
+            overflow-y: auto;
+            animation: fadeIn 0.3s ease-out;
+        }
+        .modal-overlay.active {
+            display: flex;
+            align-items: flex-start;
+            justify-content: center;
+            padding: 40px 20px;
+        }
+        .reseller-modal {
+            background: var(--secondary-color);
+            border: 2px solid rgba(0, 212, 255, 0.3);
+            border-radius: 16px;
+            max-width: 1200px;
+            width: 100%;
+            padding: 30px;
+            position: relative;
+            animation: slideUp 0.4s ease-out;
+            box-shadow: 0 20px 60px rgba(0, 212, 255, 0.2);
+        }
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid rgba(0, 212, 255, 0.2);
+        }
+        .modal-title {
+            font-size: 1.8em;
+            font-weight: 700;
+            color: var(--accent-color);
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        .modal-close {
+            background: rgba(239, 68, 68, 0.2);
+            border: 1px solid #f87171;
+            color: #fca5a5;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 1.5em;
+        }
+        .modal-close:hover {
+            background: rgba(239, 68, 68, 0.3);
+            transform: rotate(90deg);
+        }
+        .reseller-list {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        .reseller-item {
+            background: rgba(0, 0, 0, 0.3);
+            border: 2px solid rgba(0, 212, 255, 0.15);
+            border-radius: 12px;
+            padding: 20px;
+            transition: all 0.3s ease;
+        }
+        .reseller-item:hover {
+            border-color: var(--accent-color);
+            box-shadow: 0 5px 20px rgba(0, 212, 255, 0.1);
+        }
+        .reseller-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        .reseller-name {
+            font-size: 1.3em;
+            font-weight: 600;
+            color: var(--accent-color);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .reseller-stats {
+            display: flex;
+            gap: 15px;
+            font-size: 0.9em;
+        }
+        .reseller-stat {
+            background: rgba(0, 212, 255, 0.1);
+            padding: 5px 12px;
+            border-radius: 6px;
+            color: var(--text-secondary);
+        }
+        .reseller-stat strong {
+            color: var(--accent-color);
+        }
+        .reseller-domains {
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid rgba(0, 212, 255, 0.1);
+        }
+        .reseller-section-title {
+            font-size: 0.85em;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 10px;
+            font-weight: 600;
+        }
+        .domain-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        .domain-tag {
+            background: rgba(0, 212, 255, 0.15);
+            border: 1px solid rgba(0, 212, 255, 0.3);
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 0.85em;
+            color: var(--text-primary);
+            font-family: 'Courier New', monospace;
+        }
+        .upstream-connections {
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid rgba(0, 212, 255, 0.1);
+        }
+        .upstream-item {
+            background: rgba(16, 185, 129, 0.1);
+            border-left: 3px solid var(--success-color);
+            padding: 10px 15px;
+            margin-bottom: 8px;
+            border-radius: 6px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .upstream-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .upstream-name {
+            font-weight: 600;
+            color: var(--success-color);
+        }
+        .upstream-details {
+            font-size: 0.85em;
+            color: var(--text-secondary);
+        }
+        .connection-badge {
+            background: rgba(0, 212, 255, 0.2);
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 0.8em;
+            color: var(--accent-color);
+            font-weight: 600;
+        }
+        .empty-resellers {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--text-secondary);
+        }
+        .empty-resellers i {
+            font-size: 3em;
+            opacity: 0.5;
+            margin-bottom: 15px;
+        }
     </style>
 </head>
 <body>
@@ -281,7 +470,7 @@
                     <div class="stat-number" id="statIps">-</div>
                     <div class="stat-label">Unique IPs</div>
                 </div>
-                <div class="stat-card">
+                <div class="stat-card clickable" id="resellersCard" onclick="showResellersModal()">
                     <div class="stat-icon"><i class="bi bi-exclamation-triangle"></i></div>
                     <div class="stat-number" id="statResellers">-</div>
                     <div class="stat-label">Resellers Detected</div>
@@ -326,6 +515,28 @@
             <p>IPTV Forensics Detective v1.0 | Results are cached for 24 hours</p>
         </div>
     </div>
+    
+    <!-- Reseller Details Modal -->
+    <div class="modal-overlay" id="resellerModal">
+        <div class="reseller-modal">
+            <div class="modal-header">
+                <div class="modal-title">
+                    <i class="bi bi-diagram-3"></i>
+                    <span>Reseller Network Analysis</span>
+                </div>
+                <div class="modal-close" onclick="closeResellersModal()">
+                    <i class="bi bi-x"></i>
+                </div>
+            </div>
+            <div id="resellerContent">
+                <div class="empty-resellers">
+                    <i class="bi bi-hourglass-split"></i>
+                    <p>Loading reseller data...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         const urlInput = document.getElementById('urlInput');
@@ -517,6 +728,141 @@
             const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' };
             return text.replace(/[&<>"']/g, m => map[m]);
         }
+        
+        // Reseller Modal Functions
+        async function showResellersModal() {
+            const modal = document.getElementById('resellerModal');
+            const content = document.getElementById('resellerContent');
+            
+            modal.classList.add('active');
+            content.innerHTML = `
+                <div class="empty-resellers">
+                    <i class="bi bi-hourglass-split"></i>
+                    <p>Loading reseller data...</p>
+                </div>
+            `;
+            
+            try {
+                const response = await fetch('resellers.php');
+                const data = await response.json();
+                
+                if (!data.success) {
+                    throw new Error(data.error || 'Failed to load reseller data');
+                }
+                
+                if (data.resellers.length === 0) {
+                    content.innerHTML = `
+                        <div class="empty-resellers">
+                            <i class="bi bi-check-circle"></i>
+                            <p>No resellers detected in the database yet.</p>
+                            <p style="font-size: 0.9em; margin-top: 10px;">Scan some IPTV URLs to build the reseller network.</p>
+                        </div>
+                    `;
+                    return;
+                }
+                
+                let html = '<div class="reseller-list">';
+                
+                data.resellers.forEach(reseller => {
+                    html += `
+                        <div class="reseller-item">
+                            <div class="reseller-header">
+                                <div class="reseller-name">
+                                    <i class="bi bi-exclamation-triangle-fill"></i>
+                                    ${escapeHtml(reseller.name)}
+                                </div>
+                                <div class="reseller-stats">
+                                    <div class="reseller-stat">
+                                        <strong>${reseller.domain_count}</strong> domains
+                                    </div>
+                                    <div class="reseller-stat">
+                                        <strong>${reseller.ips.length}</strong> IPs
+                                    </div>
+                                    <div class="reseller-stat">
+                                        Avg age: <strong>${reseller.avg_age_days}</strong> days
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="reseller-domains">
+                                <div class="reseller-section-title">
+                                    <i class="bi bi-globe2"></i> Associated Domains
+                                </div>
+                                <div class="domain-list">
+                                    ${reseller.domains.map(domain => `<div class="domain-tag">${escapeHtml(domain)}</div>`).join('')}
+                                </div>
+                            </div>
+                            
+                            ${reseller.upstream_providers.length > 0 ? `
+                                <div class="upstream-connections">
+                                    <div class="reseller-section-title">
+                                        <i class="bi bi-arrow-up-circle"></i> Upstream Provider Connections
+                                    </div>
+                                    ${reseller.upstream_providers.map(upstream => `
+                                        <div class="upstream-item">
+                                            <div class="upstream-info">
+                                                <i class="bi bi-shield-check"></i>
+                                                <div>
+                                                    <div class="upstream-name">${escapeHtml(upstream.name)}</div>
+                                                    <div class="upstream-details">
+                                                        ${escapeHtml(upstream.domain)} • 
+                                                        ${upstream.age_days} days old • 
+                                                        Score: ${upstream.upstream_score.toFixed(1)}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="connection-badge">
+                                                <i class="bi bi-diagram-3"></i> ${escapeHtml(upstream.shared_ip)}
+                                            </div>
+                                        </div>
+                                    `).join('')}
+                                </div>
+                            ` : ''}
+                        </div>
+                    `;
+                });
+                
+                html += '</div>';
+                html += `
+                    <div style="margin-top: 20px; padding: 15px; background: rgba(0, 212, 255, 0.1); border-radius: 8px; border-left: 3px solid var(--accent-color);">
+                        <div style="font-size: 0.9em; color: var(--text-secondary);">
+                            <i class="bi bi-info-circle"></i> <strong>Total Relationships:</strong> ${data.relationships.length} connections detected between resellers and upstream providers
+                        </div>
+                    </div>
+                `;
+                
+                content.innerHTML = html;
+                
+            } catch (error) {
+                content.innerHTML = `
+                    <div class="empty-resellers">
+                        <i class="bi bi-exclamation-circle" style="color: var(--danger-color);"></i>
+                        <p style="color: var(--danger-color);">Error loading reseller data</p>
+                        <p style="font-size: 0.9em; margin-top: 10px;">${escapeHtml(error.message)}</p>
+                    </div>
+                `;
+            }
+        }
+        
+        function closeResellersModal() {
+            const modal = document.getElementById('resellerModal');
+            modal.classList.remove('active');
+        }
+        
+        // Close modal when clicking outside
+        document.addEventListener('click', function(event) {
+            const modal = document.getElementById('resellerModal');
+            if (event.target === modal) {
+                closeResellersModal();
+            }
+        });
+        
+        // Close modal with Escape key
+        document.addEventListener('keydown', function(event) {
+            if (event.key === 'Escape') {
+                closeResellersModal();
+            }
+        });
     </script>
 </body>
 </html>
