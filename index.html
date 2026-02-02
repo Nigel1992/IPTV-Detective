@@ -70,33 +70,57 @@
             background: var(--secondary-color);
             border: 2px solid rgba(0, 212, 255, 0.2);
             border-radius: 12px;
-            padding: 15px;
+            padding: 20px;
             display: flex;
-            gap: 10px;
+            flex-direction: column;
+            gap: 15px;
             transition: all 0.3s ease;
         }
         .search-box:focus-within { border-color: var(--accent-color); box-shadow: 0 0 20px rgba(0, 212, 255, 0.1); }
+        .input-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .input-label {
+            font-size: 0.85em;
+            color: var(--accent-color);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
         .search-box input {
-            flex: 1;
-            background: transparent;
-            border: none;
+            width: 100%;
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(0, 212, 255, 0.2);
             color: var(--text-primary);
             outline: none;
             font-size: 1em;
+            padding: 12px 15px;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+        }
+        .search-box input:focus {
+            border-color: var(--accent-color);
+            background: rgba(0, 0, 0, 0.5);
+            box-shadow: 0 0 10px rgba(0, 212, 255, 0.1);
         }
         .search-box input::placeholder { color: var(--text-secondary); }
         .search-box button {
             background: linear-gradient(135deg, var(--accent-color), #0099cc);
             border: none;
             color: #000;
-            padding: 8px 25px;
+            padding: 14px 30px;
             border-radius: 8px;
-            font-weight: 600;
+            font-weight: 700;
+            font-size: 1.05em;
             cursor: pointer;
             transition: all 0.3s ease;
             display: flex;
             align-items: center;
-            gap: 8px;
+            justify-content: center;
+            gap: 10px;
+            margin-top: 5px;
         }
         .search-box button:hover { background: linear-gradient(135deg, var(--accent-hover), #008ab8); transform: translateY(-2px); box-shadow: 0 8px 16px rgba(0, 212, 255, 0.2); }
         .search-box button:active { transform: translateY(0); }
@@ -256,9 +280,15 @@
         
         <div class="search-container">
             <div class="search-box">
-                <input type="text" id="providerNameInput" placeholder="Provider/Service Name (optional - e.g., ABC IPTV, Reseller X)" autocomplete="off" style="border-bottom: 1px solid rgba(0, 212, 255, 0.2); margin-bottom: 10px; padding-bottom: 10px;">
-                <input type="text" id="urlInput" placeholder="Enter IPTV trial URL (e.g., iptv.example.com or http://iptv.example.com)" autocomplete="off">
-                <button type="button" onclick="scanHost()"><i class="bi bi-search"></i> Scan</button>
+                <div class="input-group">
+                    <label class="input-label"><i class="bi bi-tag"></i> Provider Name (Optional)</label>
+                    <input type="text" id="providerNameInput" placeholder="e.g., ABC IPTV, MyStream Pro" autocomplete="off">
+                </div>
+                <div class="input-group">
+                    <label class="input-label"><i class="bi bi-link-45deg"></i> IPTV URL</label>
+                    <input type="text" id="urlInput" placeholder="e.g., http://iptv.example.com:8080/playlist.m3u8" autocomplete="off">
+                </div>
+                <button type="button" onclick="scanHost()"><i class="bi bi-search"></i> Scan Host</button>
             </div>
         </div>
         <div class="loading-spinner" id="loadingSpinner">
