@@ -3,6 +3,9 @@
 
 USE your_database_name;
 
+-- Add provider website field
+ALTER TABLE scanned_hosts ADD COLUMN IF NOT EXISTS provider_website VARCHAR(255);
+
 -- Add new columns for enhanced reseller detection
 ALTER TABLE scanned_hosts ADD COLUMN IF NOT EXISTS asn_block VARCHAR(100);
 ALTER TABLE scanned_hosts ADD COLUMN IF NOT EXISTS asn_name VARCHAR(255);

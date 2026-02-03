@@ -496,6 +496,10 @@
                     <input type="text" id="providerNameInput" placeholder="e.g., ABC IPTV, MyStream Pro" autocomplete="off">
                 </div>
                 <div class="input-group">
+                    <label class="input-label"><i class="bi bi-globe"></i> Provider Website (Optional)</label>
+                    <input type="text" id="providerWebsiteInput" placeholder="e.g., https://abciptv.com" autocomplete="off">
+                </div>
+                <div class="input-group">
                     <label class="input-label"><i class="bi bi-link-45deg"></i> IPTV URL</label>
                     <input type="text" id="urlInput" placeholder="e.g., http://iptv.example.com:8080/playlist.m3u8" autocomplete="off">
                 </div>
@@ -541,6 +545,7 @@
     <script>
         const urlInput = document.getElementById('urlInput');
         const providerNameInput = document.getElementById('providerNameInput');
+        const providerWebsiteInput = document.getElementById('providerWebsiteInput');
         const loadingSpinner = document.getElementById('loadingSpinner');
         const resultsContainer = document.getElementById('resultsContainer');
         
@@ -573,6 +578,7 @@
         async function scanHost() {
             const url = urlInput.value.trim();
             const providerName = providerNameInput.value.trim();
+            const providerWebsite = providerWebsiteInput.value.trim();
             if (!url) {
                 showError('Please enter a URL');
                 return;
@@ -583,7 +589,11 @@
                 const response = await fetch('scan-enhanced.php', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ url: url, provider_name: providerName })
+                    body: JSON.stringify({ 
+                        url: url, 
+                        provider_name: providerName,
+                        provider_website: providerWebsite
+                    })
                 });
                 
                 // First check if response is ok

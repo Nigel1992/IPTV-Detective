@@ -4,6 +4,11 @@
  * Adds: ASN analysis, nameserver clustering, SSL cert parsing, registration pattern detection
  */
 
+// Enable error reporting for debugging
+error_reporting(E_ALL);
+ini_set('display_errors', 0);
+ini_set('log_errors', 1);
+
 class IPTVScan {
     private $db;
     private $known_datacenters = [];
@@ -50,10 +55,16 @@ class IPTVScan {
         global $KNOWN_DATACENTERS;
         if (isset($KNOWN_DATACENTERS) && is_array($KNOWN_DATACENTERS)) {
             $this->known_datacenters = $KNOWN_DATACENTERS;
+        } else {
+            // Fallback if not defined in config
+            $this->known_datacenters = [
+                'ovh', 'hetzner', 'linode', 'digitalocean', 'vultr',
+                'contabo', 'scaleway', 'arubacloud', 'aws', 'azure', 'google cloud'
+            ];
         }
     }
 
-    public function scanHost($url, $provider_name = '') {
+    public function scanHost($url, $provider_name = '', $provider_website = '') {
         try {
             $domain = $this->extractDomain($url);
             if (!$domain) {
@@ -96,6 +107,7 @@ class IPTVScan {
             $data = [
                 'provider_name' => implode(' | ', $providers),
                 'provider_count' => count($providers),
+                'provider_website' => $provider_website ?: null,
                 'original_url' => $url,
                 'domain' => $domain,
                 'resolved_ip' => $ip,
@@ -498,34 +510,63 @@ class IPTVScan {
 
     private function saveToDatabase($data) {
         $sql = "REPLACE INTO scanned_hosts 
-                (provider_name, provider_count, original_url, domain, resolved_ip, asn, asn_block, 
+                (provider_name, provider_count, provider_website, original_url, domain, resolved_ip, asn, asn_block, 
                  asn_name, organization, country_code, country_name, nameserver_hash, nameservers,
                  ssl_cert_hash, ssl_issuer, ssl_common_names, domain_registrar, domain_reg_date,
                  domain_reg_email, panel_type, panel_fingerprint, domain_age_days, registration_pattern,
                  confidence_score, asn_reseller_confidence, ns_reseller_confidence, 
                  cert_reseller_confidence, reg_pattern_confidence, relationship_reasons,
                  is_datacenter_reseller, is_likely_upstream, upstream_score) 
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
 
         $stmt = $this->db->prepare($sql);
         if (!$stmt) {
             throw new Exception("Database prepare failed: " . $this->db->error);
         }
 
+        // Type string: 33 parameters
+        // s=string, i=integer
+        // provider_name, provider_count, provider_website, original_url, domain, resolved_ip, asn, asn_block, asn_name, organization, 
+        // country_code, country_name, nameserver_hash, nameservers, ssl_cert_hash, ssl_issuer, ssl_common_names, 
+        // domain_registrar, domain_reg_date, domain_reg_email, panel_type, panel_fingerprint, domain_age_days, 
+        // registration_pattern, confidence_score, asn_reseller_confidence, ns_reseller_confidence, 
+        // cert_reseller_confidence, reg_pattern_confidence, relationship_reasons, is_datacenter_reseller, 
+        // is_likely_upstream, upstream_score
         $stmt->bind_param(
-            "ssisssssssssssssssssisiiiiiisii",
-            $data['provider_name'], $data['provider_count'], $data['original_url'],
-            $data['domain'], $data['resolved_ip'], $data['asn'], $data['asn_block'],
-            $data['asn_name'], $data['organization'], $data['country_code'], $data['country_name'],
-            $data['nameserver_hash'], $data['nameservers'],
-            $data['ssl_cert_hash'], $data['ssl_issuer'], $data['ssl_common_names'],
-            $data['domain_registrar'], $data['domain_reg_date'], $data['domain_reg_email'],
-            $data['panel_type'], $data['panel_fingerprint'], $data['domain_age_days'],
-            $data['registration_pattern'], $data['confidence_score'],
-            $data['asn_reseller_confidence'], $data['ns_reseller_confidence'],
-            $data['cert_reseller_confidence'], $data['reg_pattern_confidence'],
-            $data['relationship_reasons'], $data['is_datacenter_reseller'],
-            $data['is_likely_upstream'], $data['upstream_score']
+            "sissssssssssssssssssssisiiiiisiii",
+            $data['provider_name'], 
+            $data['provider_count'],
+            $data['provider_website'], 
+            $data['original_url'],
+            $data['domain'], 
+            $data['resolved_ip'], 
+            $data['asn'], 
+            $data['asn_block'],
+            $data['asn_name'], 
+            $data['organization'], 
+            $data['country_code'], 
+            $data['country_name'],
+            $data['nameserver_hash'], 
+            $data['nameservers'],
+            $data['ssl_cert_hash'], 
+            $data['ssl_issuer'], 
+            $data['ssl_common_names'],
+            $data['domain_registrar'], 
+            $data['domain_reg_date'], 
+            $data['domain_reg_email'],
+            $data['panel_type'], 
+            $data['panel_fingerprint'], 
+            $data['domain_age_days'],
+            $data['registration_pattern'], 
+            $data['confidence_score'],
+            $data['asn_reseller_confidence'], 
+            $data['ns_reseller_confidence'],
+            $data['cert_reseller_confidence'], 
+            $data['reg_pattern_confidence'],
+            $data['relationship_reasons'], 
+            $data['is_datacenter_reseller'],
+            $data['is_likely_upstream'], 
+            $data['upstream_score']
         );
 
         if (!$stmt->execute()) {
@@ -553,19 +594,28 @@ class IPTVScan {
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     header('Content-Type: application/json');
     
-    // Get JSON input
-    $input = json_decode(file_get_contents('php://input'), true);
-    
-    // Support both JSON and form-urlencoded
-    $url = $input['url'] ?? $_POST['url'] ?? null;
-    $provider_name = $input['provider_name'] ?? $_POST['provider_name'] ?? '';
-    
-    if ($url) {
-        $scanner = new IPTVScan();
-        $scanner->scanHost($url, $provider_name);
-    } else {
-        http_response_code(400);
-        echo json_encode(['success' => false, 'error' => 'Missing url parameter']);
+    try {
+        // Get JSON input
+        $input = json_decode(file_get_contents('php://input'), true);
+        
+        // Support both JSON and form-urlencoded
+        $url = $input['url'] ?? $_POST['url'] ?? null;
+        $provider_name = $input['provider_name'] ?? $_POST['provider_name'] ?? '';
+        $provider_website = $input['provider_website'] ?? $_POST['provider_website'] ?? '';
+        
+        if ($url) {
+            $scanner = new IPTVScan();
+            $scanner->scanHost($url, $provider_name, $provider_website);
+        } else {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'error' => 'Missing url parameter']);
+        }
+    } catch (Exception $e) {
+        http_response_code(500);
+        echo json_encode(['success' => false, 'error' => 'Server error: ' . $e->getMessage(), 'trace' => $e->getTraceAsString()]);
+    } catch (Error $e) {
+        http_response_code(500);
+        echo json_encode(['success' => false, 'error' => 'Fatal error: ' . $e->getMessage(), 'trace' => $e->getTraceAsString()]);
     }
 }
 ?>
