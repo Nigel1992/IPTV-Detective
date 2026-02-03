@@ -37,7 +37,7 @@ try {
             provider_count,
             COUNT(DISTINCT domain) as domain_count,
             COUNT(DISTINCT resolved_ip) as ip_count
-        FROM iptv_scans 
+        FROM scanned_hosts 
         WHERE provider_name IS NOT NULL 
         AND provider_name != ''
         AND provider_count > 1
@@ -56,7 +56,7 @@ try {
     
     while ($row = $resellerResult->fetch_assoc()) {
         // Get domains for this provider
-        $domainQuery = "SELECT DISTINCT domain FROM iptv_scans WHERE provider_name = ? LIMIT 20";
+        $domainQuery = "SELECT DISTINCT domain FROM scanned_hosts WHERE provider_name = ? LIMIT 20";
         $stmt = $conn->prepare($domainQuery);
         $stmt->bind_param("s", $row['provider_name']);
         $stmt->execute();
@@ -69,7 +69,7 @@ try {
         $stmt->close();
         
         // Get IPs for this provider
-        $ipQuery = "SELECT DISTINCT resolved_ip FROM iptv_scans WHERE provider_name = ? AND resolved_ip IS NOT NULL LIMIT 10";
+        $ipQuery = "SELECT DISTINCT resolved_ip FROM scanned_hosts WHERE provider_name = ? AND resolved_ip IS NOT NULL LIMIT 10";
         $stmt = $conn->prepare($ipQuery);
         $stmt->bind_param("s", $row['provider_name']);
         $stmt->execute();
@@ -124,7 +124,7 @@ try {
 }
 ?>
                     upstream_score
-                FROM iptv_scans 
+                FROM scanned_hosts 
                 WHERE resolved_ip = ? 
                 AND is_likely_upstream = 1
                 AND provider_name != ?
@@ -167,8 +167,8 @@ try {
             t2.provider_name as upstream,
             t1.resolved_ip as shared_ip,
             COUNT(DISTINCT t1.domain) as connection_strength
-        FROM iptv_scans t1
-        INNER JOIN iptv_scans t2 ON t1.resolved_ip = t2.resolved_ip
+        FROM scanned_hosts t1
+        INNER JOIN scanned_hosts t2 ON t1.resolved_ip = t2.resolved_ip
         WHERE t1.provider_count > 1 
         AND t2.is_likely_upstream = 1
         AND t1.provider_name != t2.provider_name
