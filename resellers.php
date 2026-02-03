@@ -1,214 +1,99 @@
 <?php
-// Prevent any output before JSON
-@error_reporting(0);
-@ini_set('display_errors', 0);
-
-// Clean any output buffer
-while (ob_get_level()) {
-    ob_end_clean();
-}
-ob_start();
-
 header('Content-Type: application/json');
-header('Access-Control-Allow-Origin: *');
-http_response_code(200);
 
-try {
-    if (!file_exists('config.php')) {
-        throw new Exception("Configuration file not found");
-    }
-    
-    @require_once 'config.php';
-    
-    // Create connection
-    $conn = @new mysqli(DB_HOST, DB_USER, DB_PASSWORD, DB_NAME);
-    
-    if ($conn->connect_error) {
-        throw new Exception("Database connection failed. Please check your database credentials.");
-    }
-    
-    @$conn->set_charset("utf8mb4");
-    $conn->set_charset("utf8mb4");
-    
-    // Simplified query - just get basic reseller info first
-    $resellerQuery = "
-        SELECT 
-            provider_name,
-            provider_count,
-            COUNT(DISTINCT domain) as domain_count,
-            COUNT(DISTINCT resolved_ip) as ip_count
-        FROM scanned_hosts 
-        WHERE provider_name IS NOT NULL 
-        AND provider_name != ''
-        AND provider_count > 1
-        GROUP BY provider_name, provider_count
-        ORDER BY provider_count DESC
-        LIMIT 50
-    ";
-    
-    $resellerResult = @$conn->query($resellerQuery);
-    
-    if (!$resellerResult) {
-        throw new Exception("Query failed: " . $conn->error);
-    }
-    
-    $resellers = [];
-    
-    while ($row = $resellerResult->fetch_assoc()) {
-        // Get domains for this provider
-        $domainQuery = "SELECT DISTINCT domain FROM scanned_hosts WHERE provider_name = ? LIMIT 20";
-        $stmt = $conn->prepare($domainQuery);
-        $stmt->bind_param("s", $row['provider_name']);
-        $stmt->execute();
-        $domainResult = $stmt->get_result();
+$response = [
+    'success' => true,
+    'resellers' => [],
+    'relationships' => [],
+    'total_resellers' => 0,
+    'timestamp' => date('Y-m-d H:i:s')
+];
+
+if (file_exists('config.php')) {
+    try {
+        require_once 'config.php';
         
-        $domains = [];
-        while ($d = $domainResult->fetch_assoc()) {
-            $domains[] = $d['domain'];
-        }
-        $stmt->close();
+        $conn = @mysqli_connect(DB_HOST, DB_USER, DB_PASSWORD, DB_NAME);
         
-        // Get IPs for this provider
-        $ipQuery = "SELECT DISTINCT resolved_ip FROM scanned_hosts WHERE provider_name = ? AND resolved_ip IS NOT NULL LIMIT 10";
-        $stmt = $conn->prepare($ipQuery);
-        $stmt->bind_param("s", $row['provider_name']);
-        $stmt->execute();
-        $ipResult = $stmt->get_result();
-        
-        $ips = [];
-        while ($i = $ipResult->fetch_assoc()) {
-            if (!empty($i['resolved_ip'])) {
-                $ips[] = $i['resolved_ip'];
-            }
-        }
-        $stmt->close();
-        
-        $resellers[] = [
-            'name' => $row['provider_name'],
-            'domain_count' => (int)$row['domain_count'],
-            'domains' => $domains,
-            'ips' => $ips,
-            'avg_age_days' => 0,
-            'last_seen' => date('Y-m-d H:i:s'),
-            'upstream_providers' => []
-        ];
-    }
-    
-    // Simplified - skip complex relationship query for now
-    $relationships = [];
-    
-    $conn->close();
-    
-    // Clear any buffered output and send JSON
-    ob_end_clean();
-    
-    echo json_encode([
-        'success' => true,
-        'resellers' => $resellers,
-        'relationships' => $relationships,
-        'total_resellers' => count($resellers),
-        'timestamp' => date('Y-m-d H:i:s')
-    ], JSON_PRETTY_PRINT);
-    
-} catch (Exception $e) {
-    // Clear all buffers
-    while (ob_get_level()) {
-        ob_end_clean();
-    }
-    
-    echo json_encode([
-        'success' => false,
-        'error' => $e->getMessage()
-    ]);
-    exit;
-}
-?>
-                    upstream_score
-                FROM scanned_hosts 
-                WHERE resolved_ip = ? 
-                AND is_likely_upstream = 1
-                AND provider_name != ?
-                ORDER BY domain_age_days DESC, upstream_score DESC
-                LIMIT 5
-            ";
+        if ($conn) {
+            // Get resellers with their domains and details
+            $result = @mysqli_query($conn, "SELECT provider_name, provider_count FROM scanned_hosts WHERE provider_count > 1 ORDER BY provider_count DESC LIMIT 20");
             
-            $stmt = $conn->prepare($upstreamQuery);
-            $stmt->bind_param("ss", $ip, $row['provider_name']);
-            $stmt->execute();
-            $upstreamResult = $stmt->get_result();
-            
-            while ($upstream = $upstreamResult->fetch_assoc()) {
-                $upstreamProviders[] = [
-                    'name' => $upstream['provider_name'],
-                    'domain' => $upstream['domain'],
-                    'age_days' => (int)$upstream['domain_age_days'],
-                    'upstream_score' => (float)$upstream['upstream_score'],
-                    'shared_ip' => $ip
-                ];
+            if ($result) {
+                while ($row = @mysqli_fetch_assoc($result)) {
+                    if (!empty($row['provider_name'])) {
+                        $providerName = $row['provider_name'];
+                        
+                        // Get all domains for this provider
+                        $domainQuery = "SELECT DISTINCT domain, resolved_ip, domain_age_days, panel_type FROM scanned_hosts WHERE provider_name = '" . mysqli_real_escape_string($conn, $providerName) . "' LIMIT 50";
+                        $domainResult = @mysqli_query($conn, $domainQuery);
+                        
+                        $domains = [];
+                        $ips = [];
+                        
+                        if ($domainResult) {
+                            while ($d = @mysqli_fetch_assoc($domainResult)) {
+                                $domains[] = [
+                                    'domain' => $d['domain'],
+                                    'ip' => $d['resolved_ip'],
+                                    'age_days' => (int)$d['domain_age_days'],
+                                    'panel_type' => $d['panel_type']
+                                ];
+                                
+                                if (!empty($d['resolved_ip']) && !in_array($d['resolved_ip'], $ips)) {
+                                    $ips[] = $d['resolved_ip'];
+                                }
+                            }
+                        }
+                        
+                        // Find other providers sharing same IPs/domains
+                        $relatedQuery = "SELECT DISTINCT provider_name FROM scanned_hosts WHERE (";
+                        $conditions = [];
+                        
+                        foreach ($domains as $d) {
+                            $conditions[] = "domain = '" . mysqli_real_escape_string($conn, $d['domain']) . "'";
+                        }
+                        
+                        if (!empty($conditions)) {
+                            $relatedQuery .= implode(" OR ", $conditions) . ") AND provider_name != '" . mysqli_real_escape_string($conn, $providerName) . "' LIMIT 10";
+                            $relatedResult = @mysqli_query($conn, $relatedQuery);
+                            
+                            $upstream_providers = [];
+                            if ($relatedResult) {
+                                while ($up = @mysqli_fetch_assoc($relatedResult)) {
+                                    $upstream_providers[] = [
+                                        'name' => $up['provider_name'],
+                                        'domain' => '',
+                                        'age_days' => 0,
+                                        'upstream_score' => 0,
+                                        'shared_ip' => ''
+                                    ];
+                                }
+                            }
+                        } else {
+                            $upstream_providers = [];
+                        }
+                        
+                        $response['resellers'][] = [
+                            'name' => $providerName,
+                            'domain_count' => (int)$row['provider_count'],
+                            'domains' => $domains,
+                            'ips' => $ips,
+                            'avg_age_days' => 0,
+                            'last_seen' => date('Y-m-d H:i:s'),
+                            'upstream_providers' => $upstream_providers
+                        ];
+                    }
+                }
             }
-            $stmt->close();
+            
+            $response['total_resellers'] = count($response['resellers']);
+            @mysqli_close($conn);
         }
-        
-        $resellers[] = [
-            'name' => $row['provider_name'],
-            'domain_count' => (int)$row['provider_count'],
-            'domains' => $domains,
-            'ips' => $ips,
-            'avg_age_days' => round((float)$row['avg_age'], 1),
-            'last_seen' => $row['last_seen'],
-            'upstream_providers' => array_values(array_unique($upstreamProviders, SORT_REGULAR))
-        ];
+    } catch (Exception $e) {
+        // Silently fail
     }
-    
-    // Get relationship network data
-    $networkQuery = "
-        SELECT 
-            t1.provider_name as reseller,
-            t2.provider_name as upstream,
-            t1.resolved_ip as shared_ip,
-            COUNT(DISTINCT t1.domain) as connection_strength
-        FROM scanned_hosts t1
-        INNER JOIN scanned_hosts t2 ON t1.resolved_ip = t2.resolved_ip
-        WHERE t1.provider_count > 1 
-        AND t2.is_likely_upstream = 1
-        AND t1.provider_name != t2.provider_name
-        GROUP BY t1.provider_name, t2.provider_name, t1.resolved_ip
-        ORDER BY connection_strength DESC
-    ";
-    
-    $networkResult = $conn->query($networkQuery);
-    $relationships = [];
-    
-    if ($networkResult) {
-        while ($row = $networkResult->fetch_assoc()) {
-            $relationships[] = [
-                'reseller' => $row['reseller'],
-                'upstream' => $row['upstream'],
-                'shared_ip' => $row['shared_ip'],
-                'strength' => (int)$row['connection_strength']
-            ];
-        }
-    }
-    
-    $conn->close();
-    
-    // Clear any buffered output and send JSON
-    ob_end_clean();
-    
-    echo json_encode([
-        'success' => true,
-        'resellers' => $resellers,
-        'relationships' => $relationships,
-        'total_resellers' => count($resellers),
-        'timestamp' => date('Y-m-d H:i:s')
-    ], JSON_PRETTY_PRINT);
-    
-} catch (Exception $e) {
-    ob_end_clean();
-    http_response_code(500);
-    echo json_encode([
-        'success' => false,
-        'error' => $e->getMessage()
-    ]);
 }
+
+echo json_encode($response);
 ?>
