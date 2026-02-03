@@ -664,7 +664,9 @@
         function displayResults(data) {
             const resellerProbability = getResellerProbability(data);
             const isSharedHosting = isSharedHostingOrg(data.organization);
-            const resellerDetected = data.is_datacenter_reseller || resellerProbability >= 70 || (data.provider_count || 1) > 1 || isSharedHosting;
+            const lowUpstreamFlag = (typeof data.upstream_score === 'number' || typeof data.upstream_score === 'string') && Number(data.upstream_score) < 30;
+            // Treat very low upstream scores as a strong indicator of a reseller
+            const resellerDetected = data.is_datacenter_reseller || lowUpstreamFlag || resellerProbability >= 70 || (data.provider_count || 1) > 1 || isSharedHosting;
             const resellerText = resellerDetected ? 'Yes - Likely Reseller' : 'No - Appears Direct';
             const resellerClass = resellerDetected ? 'yes' : 'no';
             const createdAt = new Date().toLocaleString();
@@ -788,6 +790,7 @@
                         </div>
                         <div class="probability-text">
                             <strong>Reseller Detected:</strong> <span class="reseller-badge ${resellerClass}">${resellerText}</span>
+                            ${lowUpstreamFlag ? '<div style="margin-top:8px;color:#f87171;font-weight:600;">Note: Upstream Provider Score < 30 forces Reseller Detected = Yes (shows reseller characteristics).</div>' : ''}
                         </div>
                         
                         <!-- Technical Details Button -->
