@@ -492,7 +492,7 @@
         <div class="search-container">
             <div class="search-box">
                 <div class="input-group">
-                    <label class="input-label"><i class="bi bi-tag"></i> Provider Name (Optional)</label>
+                    <label class="input-label"><i class="bi bi-tag"></i> Provider Name (Highly Recommended)</label>
                     <input type="text" id="providerNameInput" placeholder="e.g., ABC IPTV, MyStream Pro" autocomplete="off">
                 </div>
                 <div class="input-group">
@@ -622,9 +622,41 @@
                 loadingSpinner.style.display = 'none';
             }
         }
+        function isSharedHostingOrg(org) {
+            const normalized = (org || '').toLowerCase();
+            return normalized.includes('namecheap') ||
+                normalized.includes('godaddy') ||
+                normalized.includes('hostgator') ||
+                normalized.includes('bluehost') ||
+                normalized.includes('hosting');
+        }
+
+        function getResellerProbability(data) {
+            const legacy = parseFloat(data.reseller_probability);
+            const confidence = parseFloat(data.confidence_score);
+            let value = 0;
+            if (Number.isFinite(legacy) && legacy > 0) {
+                value = legacy;
+            } else if (Number.isFinite(confidence) && confidence > 0) {
+                value = confidence;
+            } else {
+                let heuristic = 0;
+                if (data.is_datacenter_reseller) heuristic += 40;
+                if ((data.provider_count || 1) > 1) heuristic += 25;
+                if (isSharedHostingOrg(data.organization)) heuristic += 20;
+                if (data.domain_age_days && data.domain_age_days < 180) heuristic += 10;
+                if (!data.panel_type) heuristic += 5;
+                value = heuristic;
+            }
+            return Math.max(0, Math.min(100, Math.round(value)));
+        }
+
         function displayResults(data) {
-            const resellerText = data.is_datacenter_reseller ? 'Yes - Likely Reseller' : 'No - Appears Direct';
-            const resellerClass = data.is_datacenter_reseller ? 'yes' : 'no';
+            const resellerProbability = getResellerProbability(data);
+            const isSharedHosting = isSharedHostingOrg(data.organization);
+            const resellerDetected = data.is_datacenter_reseller || resellerProbability >= 70 || (data.provider_count || 1) > 1 || isSharedHosting;
+            const resellerText = resellerDetected ? 'Yes - Likely Reseller' : 'No - Appears Direct';
+            const resellerClass = resellerDetected ? 'yes' : 'no';
             const createdAt = new Date().toLocaleString();
             
             let providerNameHtml = '';
@@ -740,13 +772,21 @@
                     <div class="probability-section">
                         <div class="probability-label">Reseller Probability Score</div>
                         <div class="probability-meter">
-                            <div class="probability-bar" style="width: ${data.reseller_probability}%;">
-                                <span>${data.reseller_probability}%</span>
+                            <div class="probability-bar" style="width: ${resellerProbability}%;">
+                                <span>${resellerProbability}%</span>
                             </div>
                         </div>
                         <div class="probability-text">
                             <strong>Reseller Detected:</strong> <span class="reseller-badge ${resellerClass}">${resellerText}</span>
                         </div>
+                        
+                        <!-- Technical Details Button -->
+                        <button onclick="showTechnicalDetails(${JSON.stringify(data).replace(/"/g, '&quot;')})" 
+                                class="btn btn-info" 
+                                style="margin-top: 15px; width: 100%; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border: none; padding: 12px; font-weight: 600; border-radius: 8px; transition: all 0.3s;">
+                            <i class="bi bi-info-circle-fill"></i> Why Is This A Reseller? (Show Technical Analysis)
+                        </button>
+                        
                         <div style="margin-top: 12px; font-size: 0.85em; color: var(--text-secondary); background: rgba(0, 212, 255, 0.05); padding: 10px; border-radius: 4px; border-left: 3px solid var(--accent-color);">
                             <strong><i class="bi bi-info-circle"></i> What "Appears Direct" means:</strong>
                             <br><br>
@@ -929,6 +969,157 @@
         function closeResellersModal() {
             const modal = document.getElementById('resellerModal');
             modal.classList.remove('active');
+        }
+        
+        function showTechnicalDetails(data) {
+            const modal = document.getElementById('resellerModal');
+            const content = document.getElementById('resellerContent');
+            const resellerProbability = getResellerProbability(data);
+            
+            // Determine infrastructure type
+            const isSharedHosting = isSharedHostingOrg(data.organization);
+            
+            const isDatacenter = data.is_datacenter_reseller || (data.organization && (
+                data.organization.toLowerCase().includes('ovh') ||
+                data.organization.toLowerCase().includes('hetzner') ||
+                data.organization.toLowerCase().includes('digitalocean') ||
+                data.organization.toLowerCase().includes('aws') ||
+                data.organization.toLowerCase().includes('azure') ||
+                data.organization.toLowerCase().includes('google cloud')
+            ));
+            
+            let infrastructureHtml = '';
+            if (isSharedHosting) {
+                infrastructureHtml = `
+                    <div class="alert alert-danger" style="background: rgba(239, 68, 68, 0.2); border: 1px solid #f87171; color: #fca5a5; margin-bottom: 20px; padding: 15px; border-radius: 8px;">
+                        <h4 style="margin: 0 0 10px 0;"><i class="bi bi-exclamation-triangle-fill"></i> 🚩 SHARED HOSTING DETECTED</h4>
+                        <p style="margin: 0;">This domain is hosted on <strong>budget shared hosting</strong> (${escapeHtml(data.organization)}), not dedicated streaming infrastructure. This is a classic reseller indicator.</p>
+                    </div>
+                `;
+            } else if (isDatacenter) {
+                infrastructureHtml = `
+                    <div class="alert alert-warning" style="background: rgba(251, 191, 36, 0.1); border: 1px solid #fbbf24; color: #fcd34d; margin-bottom: 20px; padding: 15px; border-radius: 8px;">
+                        <h4 style="margin: 0 0 10px 0;"><i class="bi bi-server"></i> Datacenter Infrastructure</h4>
+                        <p style="margin: 0;">Hosted on datacenter infrastructure. Could be a direct provider with their own servers or a reseller using VPS hosting.</p>
+                    </div>
+                `;
+            }
+            
+            const html = `
+                <div style="max-height: 80vh; overflow-y: auto;">
+                    <h2 style="margin-top: 0; color: var(--accent-color); border-bottom: 2px solid var(--accent-color); padding-bottom: 10px;">
+                        <i class="bi bi-search"></i> Technical Analysis: ${escapeHtml(data.domain)}
+                    </h2>
+                    
+                    ${infrastructureHtml}
+                    
+                    <div style="background: rgba(0, 212, 255, 0.05); padding: 20px; border-radius: 8px; margin-bottom: 20px; border-left: 4px solid var(--accent-color);">
+                        <h3 style="margin-top: 0; color: var(--accent-color);"><i class="bi bi-clipboard-data"></i> Infrastructure Details</h3>
+                        
+                        <div class="info-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 15px; margin-top: 15px;">
+                            <div class="info-item" style="background: rgba(0, 0, 0, 0.3); padding: 12px; border-radius: 6px;">
+                                <span class="info-label" style="display: block; font-weight: 600; color: var(--accent-color); margin-bottom: 5px;">📍 Real IP Address</span>
+                                <span class="info-value" style="display: block; font-family: monospace; color: #fff;">${escapeHtml(data.resolved_ip)}</span>
+                                ${data.resolved_ip !== data.domain ? '<small style="color: var(--text-secondary); display: block; margin-top: 5px;">Domain points to this IP</small>' : ''}
+                            </div>
+                            
+                            <div class="info-item" style="background: rgba(0, 0, 0, 0.3); padding: 12px; border-radius: 6px;">
+                                <span class="info-label" style="display: block; font-weight: 600; color: var(--accent-color); margin-bottom: 5px;">🔷 ASN Information</span>
+                                <span class="info-value" style="display: block; font-family: monospace; color: #fff;">${escapeHtml(data.asn || 'N/A')}</span>
+                                <small style="color: var(--text-secondary); display: block; margin-top: 5px;">${escapeHtml(data.organization || 'Unknown organization')}</small>
+                            </div>
+                            
+                            <div class="info-item" style="background: rgba(0, 0, 0, 0.3); padding: 12px; border-radius: 6px;">
+                                <span class="info-label" style="display: block; font-weight: 600; color: var(--accent-color); margin-bottom: 5px;">🌐 Nameservers</span>
+                                <span class="info-value" style="display: block; font-family: monospace; color: #fff; font-size: 0.85em;">
+                                    ${data.nameservers ? data.nameservers.split(',').map(ns => escapeHtml(ns.trim())).join('<br>') : 'Not available'}
+                                </span>
+                                ${data.nameservers && (data.nameservers.includes('namecheap') || data.nameservers.includes('godaddy')) ? '<small style="color: #f87171; display: block; margin-top: 5px;">🚩 Shared hosting nameservers</small>' : ''}
+                            </div>
+                            
+                            <div class="info-item" style="background: rgba(0, 0, 0, 0.3); padding: 12px; border-radius: 6px;">
+                                <span class="info-label" style="display: block; font-weight: 600; color: var(--accent-color); margin-bottom: 5px;">🔒 SSL Certificate</span>
+                                <span class="info-value" style="display: block; font-family: monospace; color: #fff; font-size: 0.85em;">
+                                    ${data.ssl_issuer ? escapeHtml(data.ssl_issuer) : 'Not available'}
+                                </span>
+                                ${data.ssl_common_names ? '<small style="color: var(--text-secondary); display: block; margin-top: 5px;">Covers: ' + escapeHtml(data.ssl_common_names) + '</small>' : ''}
+                            </div>
+                            
+                            <div class="info-item" style="background: rgba(0, 0, 0, 0.3); padding: 12px; border-radius: 6px;">
+                                <span class="info-label" style="display: block; font-weight: 600; color: var(--accent-color); margin-bottom: 5px;">📅 Domain Registration</span>
+                                <span class="info-value" style="display: block; color: #fff;">
+                                    ${data.domain_age_days ? Math.floor(data.domain_age_days) + ' days old' : 'Unknown age'}
+                                </span>
+                                <small style="color: var(--text-secondary); display: block; margin-top: 5px;">
+                                    ${data.domain_registrar ? 'Registrar: ' + escapeHtml(data.domain_registrar) : 'Registrar info unavailable'}
+                                </small>
+                            </div>
+                            
+                            <div class="info-item" style="background: rgba(0, 0, 0, 0.3); padding: 12px; border-radius: 6px;">
+                                <span class="info-label" style="display: block; font-weight: 600; color: var(--accent-color); margin-bottom: 5px;">⚙️ Server Software</span>
+                                <span class="info-value" style="display: block; color: #fff;">
+                                    ${escapeHtml(data.server_header || 'Not detected')}
+                                </span>
+                                ${data.panel_type ? '<small style="color: #86efac; display: block; margin-top: 5px;">Panel: ' + escapeHtml(data.panel_type) + '</small>' : ''}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div style="background: rgba(239, 68, 68, 0.1); padding: 20px; border-radius: 8px; margin-bottom: 20px; border-left: 4px solid #f87171;">
+                        <h3 style="margin-top: 0; color: #fca5a5;"><i class="bi bi-flag-fill"></i> Reseller Indicators</h3>
+                        
+                        <ul style="list-style: none; padding: 0; margin: 10px 0 0 0;">
+                            ${isSharedHosting ? '<li style="margin-bottom: 12px; padding: 10px; background: rgba(0, 0, 0, 0.3); border-radius: 6px;"><i class="bi bi-x-circle-fill" style="color: #f87171;"></i> <strong>Shared Hosting Infrastructure:</strong> Using budget web hosting instead of dedicated streaming servers</li>' : ''}
+                            
+                            ${(data.provider_count || 1) > 1 ? '<li style="margin-bottom: 12px; padding: 10px; background: rgba(0, 0, 0, 0.3); border-radius: 6px;"><i class="bi bi-x-circle-fill" style="color: #f87171;"></i> <strong>Multiple Providers on Same IP:</strong> ' + data.provider_count + ' different providers detected - indicates reseller network</li>' : ''}
+                            
+                            ${data.domain_age_days && data.domain_age_days < 180 ? '<li style="margin-bottom: 12px; padding: 10px; background: rgba(0, 0, 0, 0.3); border-radius: 6px;"><i class="bi bi-x-circle-fill" style="color: #f87171;"></i> <strong>New Domain:</strong> Only ' + Math.floor(data.domain_age_days) + ' days old - real providers typically have older, established domains</li>' : ''}
+                            
+                            ${!data.panel_type ? '<li style="margin-bottom: 12px; padding: 10px; background: rgba(0, 0, 0, 0.3); border-radius: 6px;"><i class="bi bi-x-circle-fill" style="color: #f87171;"></i> <strong>No Panel Software Detected:</strong> Direct providers usually run panel software (XtreamUI, XtreamCodes, etc.)</li>' : ''}
+                            
+                            ${resellerProbability >= 70 ? '<li style="margin-bottom: 12px; padding: 10px; background: rgba(0, 0, 0, 0.3); border-radius: 6px;"><i class="bi bi-x-circle-fill" style="color: #f87171;"></i> <strong>High Reseller Probability:</strong> ' + resellerProbability + '% confidence based on clustering analysis</li>' : ''}
+                            
+                            ${data.relationship_reasons ? '<li style="margin-bottom: 12px; padding: 10px; background: rgba(0, 0, 0, 0.3); border-radius: 6px;"><i class="bi bi-info-circle-fill" style="color: #fbbf24;"></i> <strong>Clustering Evidence:</strong> ' + escapeHtml(data.relationship_reasons) + '</li>' : ''}
+                        </ul>
+                    </div>
+                    
+                    <div style="background: rgba(16, 185, 129, 0.1); padding: 20px; border-radius: 8px; margin-bottom: 20px; border-left: 4px solid #10b981;">
+                        <h3 style="margin-top: 0; color: #86efac;"><i class="bi bi-lightbulb-fill"></i> What This Means</h3>
+                        
+                        <p style="margin: 0 0 15px 0; line-height: 1.6;">
+                            ${data.is_datacenter_reseller || resellerProbability >= 70 || (data.provider_count || 1) > 1 || isSharedHosting ? 
+                                '<strong style="color: #fca5a5;">This appears to be a RESELLER.</strong> They are likely purchasing service from an upstream provider and reselling it under their own brand. The actual streaming infrastructure is owned and operated by someone else.' :
+                                '<strong style="color: #86efac;">This appears to be a DIRECT PROVIDER.</strong> They likely own and operate their own streaming infrastructure rather than reselling another service.'
+                            }
+                        </p>
+                        
+                        <p style="margin: 15px 0 0 0; padding: 15px; background: rgba(0, 0, 0, 0.3); border-radius: 6px; line-height: 1.6;">
+                            <strong>Real IPTV Providers typically have:</strong><br>
+                            • Dedicated servers or CDN infrastructure (not shared hosting)<br>
+                            • Older, established domains (1+ years)<br>
+                            • Panel management software (XtreamUI, etc.)<br>
+                            • Custom nameservers and SSL certificates<br>
+                            • Single provider per IP (not shared with other services)
+                        </p>
+                        
+                        <p style="margin: 15px 0 0 0; padding: 15px; background: rgba(0, 0, 0, 0.3); border-radius: 6px; line-height: 1.6;">
+                            <strong>Resellers typically have:</strong><br>
+                            • Budget shared hosting or cheap VPS<br>
+                            • Recently registered domains<br>
+                            • No panel software (just a website/payment portal)<br>
+                            • Generic hosting nameservers<br>
+                            • Multiple "providers" on the same backend infrastructure
+                        </p>
+                    </div>
+                    
+                    <button onclick="closeResellersModal()" class="btn btn-secondary" style="width: 100%; padding: 12px; border-radius: 8px; font-weight: 600;">
+                        Close
+                    </button>
+                </div>
+            `;
+            
+            content.innerHTML = html;
+            modal.classList.add('active');
         }
         
         // Close modal when clicking outside

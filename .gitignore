@@ -3,6 +3,7 @@ config.php
 .env
 .env.local
 *.log
+.ftp-credentials
 
 # Debug and Test Files
 debug-*.php

@@ -180,7 +180,7 @@ Advanced scanning with full feature set:
 POST /scan-enhanced.php
 Parameters:
   - url: IPTV URL to scan
-  - provider_name: Optional provider name for reseller linking
+  - provider_name: Highly recommended provider name for reseller linking
   
 Returns:
   - confidence_score: 0-100
