@@ -9,6 +9,7 @@ CREATE TABLE IF NOT EXISTS baseline_services (
     id INT AUTO_INCREMENT PRIMARY KEY,
     service_name VARCHAR(255) NOT NULL,
     baseline_domain VARCHAR(255),
+    credentials_hash VARCHAR(64) UNIQUE,
     channel_count INT DEFAULT 0,
     panel_type VARCHAR(100),
     epg_source VARCHAR(255),

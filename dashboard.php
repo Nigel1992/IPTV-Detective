@@ -75,10 +75,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $name = $scan['provider_name'] ?: $scan['domain'];
                 // Insert with only the required fields that should exist on all servers
                 try {
-                    $stmt2 = $db->prepare("INSERT INTO baseline_services (service_name, baseline_domain, status, created_at) VALUES (?, ?, 'approved', NOW())");
-                    $stmt2->bind_param("ss", $name, $scan['domain']);
-                    $stmt2->execute();
-                    $msg = "✓ Promoted to baseline!";
+                    // Generate unique credentials_hash if needed
+                    $credentials_hash = md5(uniqid($scan['domain'], true));
+                    $stmt2 = $db->prepare("INSERT INTO baseline_services (service_name, baseline_domain, status, credentials_hash, created_at) VALUES (?, ?, 'approved', ?, NOW())");
+                    if ($stmt2) {
+                        $stmt2->bind_param("sss", $name, $scan['domain'], $credentials_hash);
+                        $stmt2->execute();
+                        $msg = "✓ Promoted to baseline!";
+                    } else {
+                        // Fallback without credentials_hash
+                        $stmt2 = $db->prepare("INSERT INTO baseline_services (service_name, baseline_domain, status, created_at) VALUES (?, ?, 'approved', NOW())");
+                        $stmt2->bind_param("ss", $name, $scan['domain']);
+                        $stmt2->execute();
+                        $msg = "✓ Promoted to baseline!";
+                    }
                 } catch (Exception $e) {
                     $msg = "Error: " . $e->getMessage();
                 }
