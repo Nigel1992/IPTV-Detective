@@ -43,10 +43,14 @@ $tab = $_GET['tab'] ?? 'dashboard';
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     switch ($action) {
         case 'create_baseline':
-            $stmt = $db->prepare("INSERT INTO baseline_services (service_name, baseline_domain, channel_count, panel_type, epg_source, status, created_at) VALUES (?, ?, ?, ?, ?, ?, NOW())");
-            $n=$_POST['service_name'];$d=$_POST['baseline_domain'];$c=$_POST['channel_count']??0;$pt=$_POST['panel_type']??'';$epg=$_POST['epg_source']??'';$st=$_POST['status']??'pending';
-            $stmt->bind_param("ssisss",$n,$d,$c,$pt,$epg,$st);
-            $msg = $stmt->execute() ? "✓ Baseline created!" : "Error";
+            $n=$_POST['service_name'];
+            $d=$_POST['baseline_domain'];
+            $st=$_POST['status']??'pending';
+            $credentials_hash = md5(uniqid($d, true));
+            
+            $stmt = $db->prepare("INSERT INTO baseline_services (service_name, baseline_domain, credentials_hash, status, created_at) VALUES (?, ?, ?, ?, NOW())");
+            $stmt->bind_param("ssss",$n,$d,$credentials_hash,$st);
+            $msg = $stmt->execute() ? "✓ Baseline created!" : "Error: " . $stmt->error;
             break;
         case 'delete_baseline':
             $stmt = $db->prepare("DELETE FROM baseline_services WHERE id=?");
@@ -55,30 +59,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $msg = "✓ Deleted!";
             break;
         case 'edit_baseline':
-            try {
-                $n=$_POST['service_name'];
-                $d=$_POST['baseline_domain'];
-                $st=$_POST['status']??'pending';
-                $id=$_POST['id'];
-                $c=$_POST['channel_count']??0;
-                $pt=$_POST['panel_type']??'';
-                $epg=$_POST['epg_source']??'';
-                
-                // Try full update with all fields
-                $stmt = $db->prepare("UPDATE baseline_services SET service_name=?, baseline_domain=?, channel_count=?, panel_type=?, epg_source=?, status=? WHERE id=?");
-                $stmt->bind_param("ssisssi",$n,$d,$c,$pt,$epg,$st,$id);
-                
-                if (!$stmt->execute()) {
-                    // If that fails, try basic fields only
-                    $stmt2 = $db->prepare("UPDATE baseline_services SET service_name=?, baseline_domain=?, status=? WHERE id=?");
-                    $stmt2->bind_param("sssi",$n,$d,$st,$id);
-                    if (!$stmt2->execute()) {
-                        throw new Exception($stmt2->error);
-                    }
-                }
+            $n=$_POST['service_name'];
+            $d=$_POST['baseline_domain'];
+            $st=$_POST['status']??'pending';
+            $id=$_POST['id'];
+            
+            // Update only the fields that should always exist
+            $stmt = $db->prepare("UPDATE baseline_services SET service_name=?, baseline_domain=?, status=? WHERE id=?");
+            $stmt->bind_param("sssi",$n,$d,$st,$id);
+            
+            if ($stmt->execute()) {
                 $msg = "✓ Baseline updated!";
-            } catch (Exception $e) {
-                $msg = "Error: " . $e->getMessage();
+            } else {
+                $msg = "Error: " . $stmt->error;
             }
             break;
         case 'delete_scan':
