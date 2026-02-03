@@ -954,6 +954,7 @@
             resultsContainer.innerHTML = html;
         }
         function showError(message) {
+            resultsContainer.style.display = 'block';
             resultsContainer.innerHTML = `
                 <div class="error-message">
                     <i class="bi bi-exclamation-circle"></i>
