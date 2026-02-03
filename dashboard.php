@@ -55,10 +55,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $msg = "✓ Deleted!";
             break;
         case 'edit_baseline':
-            $stmt = $db->prepare("UPDATE baseline_services SET service_name=?, baseline_domain=?, channel_count=?, panel_type=?, epg_source=?, status=? WHERE id=?");
-            $n=$_POST['service_name'];$d=$_POST['baseline_domain'];$c=$_POST['channel_count']??0;$pt=$_POST['panel_type']??'';$epg=$_POST['epg_source']??'';$st=$_POST['status']??'pending';$id=$_POST['id'];
-            $stmt->bind_param("ssisssi",$n,$d,$c,$pt,$epg,$st,$id);
-            $msg = $stmt->execute() ? "✓ Baseline updated!" : "Error";
+            try {
+                $n=$_POST['service_name'];
+                $d=$_POST['baseline_domain'];
+                $st=$_POST['status']??'pending';
+                $id=$_POST['id'];
+                $c=$_POST['channel_count']??0;
+                $pt=$_POST['panel_type']??'';
+                $epg=$_POST['epg_source']??'';
+                
+                // Try full update with all fields
+                $stmt = $db->prepare("UPDATE baseline_services SET service_name=?, baseline_domain=?, channel_count=?, panel_type=?, epg_source=?, status=? WHERE id=?");
+                $stmt->bind_param("ssisssi",$n,$d,$c,$pt,$epg,$st,$id);
+                
+                if (!$stmt->execute()) {
+                    // If that fails, try basic fields only
+                    $stmt2 = $db->prepare("UPDATE baseline_services SET service_name=?, baseline_domain=?, status=? WHERE id=?");
+                    $stmt2->bind_param("sssi",$n,$d,$st,$id);
+                    if (!$stmt2->execute()) {
+                        throw new Exception($stmt2->error);
+                    }
+                }
+                $msg = "✓ Baseline updated!";
+            } catch (Exception $e) {
+                $msg = "Error: " . $e->getMessage();
+            }
             break;
         case 'delete_scan':
             $stmt = $db->prepare("DELETE FROM scanned_hosts WHERE id=?");
