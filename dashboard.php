@@ -54,6 +54,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmt->execute();
             $msg = "✓ Deleted!";
             break;
+        case 'edit_baseline':
+            $stmt = $db->prepare("UPDATE baseline_services SET service_name=?, baseline_domain=?, channel_count=?, panel_type=?, epg_source=?, status=? WHERE id=?");
+            $n=$_POST['service_name'];$d=$_POST['baseline_domain'];$c=$_POST['channel_count']??0;$pt=$_POST['panel_type']??'';$epg=$_POST['epg_source']??'';$st=$_POST['status']??'pending';$id=$_POST['id'];
+            $stmt->bind_param("ssisssi",$n,$d,$c,$pt,$epg,$st,$id);
+            $msg = $stmt->execute() ? "✓ Baseline updated!" : "Error";
+            break;
         case 'delete_scan':
             $stmt = $db->prepare("DELETE FROM scanned_hosts WHERE id=?");
             $stmt->bind_param("i", $_POST['id']);
@@ -271,7 +277,7 @@ $reseller_prob=$r['reseller_probability']??0;
 <div class="fr"><div class="fg"><label>Name</label><input name="service_name" required></div><div class="fg"><label>Domain</label><input name="baseline_domain" required></div><div class="fg"><label>Channels</label><input type="number" name="channel_count" value="0"></div></div>
 <div class="fr"><div class="fg"><label>Panel Type</label><input name="panel_type" placeholder="xstream, xtream, etc"></div><div class="fg"><label>EPG</label><input name="epg_source"></div><div class="fg"><label>Status</label><select name="status"><option value="approved">Approved</option><option value="pending">Pending</option></select></div></div>
 <button class="btn btn-success">+ Create</button></form></div>
-<h2>All Baselines (<?php echo count($data);?>)</h2><div class="panel"><?php if(empty($data)):?><div class="empty">None yet - add baselines or promote from scans</div><?php else:?><table><tr><th>ID</th><th>Name</th><th>Domain</th><th>Panel</th><th>Channels</th><th>Status</th><th>Created</th><th></th></tr><?php foreach($data as $r):?><tr><td>#<?php echo $r['id'];?></td><td><strong><?php echo htmlspecialchars($r['service_name']);?></strong></td><td class="mono"><?php echo htmlspecialchars($r['baseline_domain']??'');?></td><td><?php echo htmlspecialchars($r['panel_type']??'-');?></td><td><?php echo $r['channel_count']??0;?></td><td><span class="status <?php echo $r['status']??'pending';?>"><?php echo $r['status']??'pending';?></span></td><td><?php echo date('M d Y',strtotime($r['created_at']??'now'));?></td><td><form method="POST" style="display:inline" onsubmit="return confirm('Delete?')"><input type="hidden" name="action" value="delete_baseline"><input type="hidden" name="id" value="<?php echo $r['id'];?>"><button class="btn btn-danger btn-sm">Del</button></form></td></tr><?php endforeach;?></table><?php endif;?></div>
+<h2>All Baselines (<?php echo count($data);?>)</h2><div class="panel"><?php if(empty($data)):?><div class="empty">None yet - add baselines or promote from scans</div><?php else:?><table><tr><th>ID</th><th>Name</th><th>Domain</th><th>Panel</th><th>Channels</th><th>Status</th><th>Created</th><th></th></tr><?php foreach($data as $r):?><tr><td>#<?php echo $r['id'];?></td><td><strong><?php echo htmlspecialchars($r['service_name']);?></strong></td><td class="mono"><?php echo htmlspecialchars($r['baseline_domain']??'');?></td><td><?php echo htmlspecialchars($r['panel_type']??'-');?></td><td><?php echo $r['channel_count']??0;?></td><td><span class="status <?php echo $r['status']??'pending';?>"><?php echo $r['status']??'pending';?></span></td><td><?php echo date('M d Y',strtotime($r['created_at']??'now'));?></td><td style="display:flex;gap:4px"><button type="button" class="btn btn-primary btn-sm" onclick="editBaseline(<?php echo htmlspecialchars(json_encode($r)); ?>)">Edit</button><form method="POST" style="display:inline" onsubmit="return confirm('Delete?')"><input type="hidden" name="action" value="delete_baseline"><input type="hidden" name="id" value="<?php echo $r['id'];?>"><button class="btn btn-danger btn-sm">Del</button></form></td></tr><?php endforeach;?></table><?php endif;?></div>
 <?php endif;?>
 
 <?php if($tab==='aliases'):?>
@@ -287,5 +293,44 @@ $reseller_prob=$r['reseller_probability']??0;
 <button class="btn btn-success">+ Create</button></form></div>
 <h2>All Users</h2><div class="panel"><?php if(empty($data)):?><div class="empty">None</div><?php else:?><table><tr><th>ID</th><th>Username</th><th>Role</th><th>Created</th><th>Last Login</th><th></th></tr><?php foreach($data as $r):?><tr><td>#<?php echo $r['id'];?></td><td><strong><?php echo htmlspecialchars($r['username']??'');?></strong><?php if($r['id']==$admin_id):?> (you)<?php endif;?></td><td><span class="role <?php echo $r['role']??'viewer';?>"><?php echo $r['role']??'viewer';?></span></td><td><?php echo date('M d Y',strtotime($r['created_at']??'now'));?></td><td><?php echo (!empty($r['last_login']))?date('M d H:i',strtotime($r['last_login'])):'Never';?></td><td><?php if($r['id']!=$admin_id):?><form method="POST" style="display:inline" onsubmit="return confirm('Delete?')"><input type="hidden" name="action" value="delete_user"><input type="hidden" name="id" value="<?php echo $r['id'];?>"><button class="btn btn-danger btn-sm">Del</button></form><?php else:?>-<?php endif;?></td></tr><?php endforeach;?></table><?php endif;?></div>
 <?php endif;?>
+
+<div id="editModal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.7);z-index:1000;align-items:center;justify-content:center">
+<div style="background:white;padding:20px;border-radius:8px;max-width:500px;width:90%">
+<h3>Edit Baseline</h3>
+<form method="POST" id="editForm">
+<input type="hidden" name="action" value="edit_baseline">
+<input type="hidden" name="id" id="editId">
+<div class="fr"><div class="fg"><label>Name</label><input name="service_name" id="editName" required></div><div class="fg"><label>Domain</label><input name="baseline_domain" id="editDomain" required></div></div>
+<div class="fr"><div class="fg"><label>Channels</label><input type="number" name="channel_count" id="editChannels" value="0"></div><div class="fg"><label>Panel Type</label><input name="panel_type" id="editPanel" placeholder="xstream, xtream, etc"></div></div>
+<div class="fr"><div class="fg"><label>EPG</label><input name="epg_source" id="editEPG"></div><div class="fg"><label>Status</label><select name="status" id="editStatus"><option value="approved">Approved</option><option value="pending">Pending</option></select></div></div>
+<div style="display:flex;gap:10px;margin-top:15px">
+<button type="submit" class="btn btn-success">Save Changes</button>
+<button type="button" class="btn btn-secondary" onclick="closeEditModal()">Cancel</button>
+</div>
+</form>
+</div>
+</div>
+
+<script>
+function editBaseline(baseline) {
+  document.getElementById('editId').value = baseline.id;
+  document.getElementById('editName').value = baseline.service_name || '';
+  document.getElementById('editDomain').value = baseline.baseline_domain || '';
+  document.getElementById('editChannels').value = baseline.channel_count || 0;
+  document.getElementById('editPanel').value = baseline.panel_type || '';
+  document.getElementById('editEPG').value = baseline.epg_source || '';
+  document.getElementById('editStatus').value = baseline.status || 'pending';
+  document.getElementById('editModal').style.display = 'flex';
+}
+
+function closeEditModal() {
+  document.getElementById('editModal').style.display = 'none';
+}
+
+// Close modal when clicking outside
+document.getElementById('editModal')?.addEventListener('click', function(e) {
+  if(e.target === this) closeEditModal();
+});
+</script>
 
 </div></body></html><?php $db->close();?>
