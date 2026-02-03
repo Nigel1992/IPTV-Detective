@@ -684,4 +684,4 @@ define('LOG_ALL_REQUESTS', true);
 
 ---
 
-**Questions?** Join our [Discord community](https://discord.gg/RdH5Quqvg2) for API support.
+**Questions?** Join our [Discord community](https://discord.gg/zxUq3afdn8) for API support.

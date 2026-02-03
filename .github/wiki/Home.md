@@ -112,7 +112,7 @@ See [API Reference](API-Reference.md) for complete authentication details.
 
 ## 🤝 Contributing
 
-Found a bug or have a feature request? Join our [Discord server](https://discord.gg/RdH5Quqvg2) or open an issue on GitHub.
+Found a bug or have a feature request? Join our [Discord server](https://discord.gg/zxUq3afdn8) or open an issue on GitHub.
 
 ## 📜 License
 
@@ -120,4 +120,4 @@ This project is released for educational and research purposes. Always respect p
 
 ---
 
-**Need Help?** Start with the [Basic README](../../README.md) or join our community on [Discord](https://discord.gg/RdH5Quqvg2).
+**Need Help?** Start with the [Basic README](../../README.md) or join our community on [Discord](https://discord.gg/zxUq3afdn8).
