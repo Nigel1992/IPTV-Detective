@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>IPTV Forensics Detective</title>
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cdefs%3E%3ClinearGradient id='grad' x1='0%25' y1='0%25' x2='100%25' y2='100%25'%3E%3Cstop offset='0%25' style='stop-color:%2300d4ff;stop-opacity:1' /%3E%3Cstop offset='100%25' style='stop-color:%230099cc;stop-opacity:1' /%3E%3C/linearGradient%3E%3C/defs%3E%3Ccircle cx='50' cy='50' r='45' fill='url(%23grad)'/%3E%3Ccircle cx='50' cy='50' r='25' fill='none' stroke='white' stroke-width='3'/%3E%3Cline x1='68' y1='68' x2='85' y2='85' stroke='white' stroke-width='5' stroke-linecap='round'/%3E%3Ccircle cx='50' cy='50' r='15' fill='rgba(255,255,255,0.3)'/%3E%3C/svg%3E">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
     <style>
@@ -202,7 +203,7 @@
         .empty-state { text-align: center; padding: 60px 20px; }
         .empty-state i { font-size: 4em; color: var(--text-secondary); margin-bottom: 20px; opacity: 0.5; }
         .empty-state p { color: var(--text-secondary); font-size: 1.1em; }
-        .footer { text-align: center; color: var(--text-secondary); font-size: 0.85em; margin-top: auto; padding-top: 30px; }
+        .footer { text-align: center; color: var(--text-secondary); font-size: 0.85em; margin-top: 20px; padding-top: 10px; }
         
         /* Stats Section */
         .stats-container { max-width: 1200px; margin: 0 auto 30px; }
@@ -449,12 +450,90 @@
             opacity: 0.5;
             margin-bottom: 15px;
         }
+        .tooltip-hover {
+            position: relative;
+            cursor: help;
+            border-bottom: 1px dotted var(--accent-color);
+        }
+        .tooltip-hover:hover::after {
+            content: attr(data-tooltip);
+            position: absolute;
+            bottom: 125%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.95);
+            color: var(--text-primary);
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 0.85em;
+            white-space: nowrap;
+            z-index: 1000;
+            border: 1px solid var(--accent-color);
+            box-shadow: 0 4px 12px rgba(0, 212, 255, 0.3);
+        }
+        .tooltip-hover:hover::before {
+            content: '';
+            position: absolute;
+            bottom: 115%;
+            left: 50%;
+            transform: translateX(-50%);
+            border: 6px solid transparent;
+            border-top-color: var(--accent-color);
+            z-index: 1001;
+        }
+        #networkGraph {
+            width: 100%;
+            height: 600px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 8px;
+            border: 1px solid rgba(0, 212, 255, 0.2);
+        }
+        .network-legend {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+            padding: 15px;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 8px;
+        }
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 0.9em;
+        }
+        .legend-color {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            border: 2px solid currentColor;
+        }
+        .network-btn {
+            background: linear-gradient(135deg, rgba(0, 212, 255, 0.3), rgba(0, 153, 204, 0.3));
+            border: 1px solid var(--accent-color);
+            color: var(--accent-color);
+            padding: 6px 12px;
+            border-radius: 4px;
+            font-size: 0.85em;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .network-btn:hover {
+            background: linear-gradient(135deg, rgba(0, 212, 255, 0.5), rgba(0, 153, 204, 0.5));
+            box-shadow: 0 0 10px rgba(0, 212, 255, 0.4);
+            color: white;
+        }
     </style>
 </head>
 <body>
     <div class="container-wrapper">
         <div class="header">
             <h1><i class="bi bi-shield-check"></i> IPTV Forensics</h1>
+            <p style="background: linear-gradient(135deg, var(--accent-color), #0099cc); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; margin: 5px 0 0 0; font-size: 0.9em; font-weight: 600;">v2.1 | February 2026</p>
         </div>
         
         <!-- Stats Section -->
@@ -473,7 +552,7 @@
                 <div class="stat-card clickable" id="resellersCard" onclick="showResellersModal()">
                     <div class="stat-icon"><i class="bi bi-exclamation-triangle"></i></div>
                     <div class="stat-number" id="statResellers">-</div>
-                    <div class="stat-label">Resellers Detected</div>
+                    <div class="stat-label">Possible Resellers</div>
                 </div>
                 <div class="stat-card">
                     <div class="stat-icon"><i class="bi bi-shield-check"></i></div>
@@ -485,7 +564,7 @@
         
         <!-- Intro Section -->
         <div class="intro-section">
-            <div class="logo-icon"><i class="bi bi-search"></i></div>
+            <div class="logo-icon"><i class="bi bi-radar"></i></div>
             <p>Enter an IPTV trial URL to begin scanning</p>
         </div>
         
@@ -493,30 +572,32 @@
             <div class="search-box">
                 <div class="input-group">
                     <label class="input-label"><i class="bi bi-tag"></i> Provider Name (Highly Recommended)</label>
-                    <input type="text" id="providerNameInput" placeholder="e.g., ABC IPTV, MyStream Pro" autocomplete="off">
+                    <input type="text" id="providerNameInput" placeholder="e.g., ABC IPTV, MyStream Pro" autocomplete="off" required>
                 </div>
                 <div class="input-group">
-                    <label class="input-label"><i class="bi bi-globe"></i> Provider Website (Optional)</label>
+                    <label class="input-label"><i class="bi bi-globe"></i> Provider Website <span style="color: #ff9800; font-size: 0.9em;">(Highly Recommended)</span></label>
                     <input type="text" id="providerWebsiteInput" placeholder="e.g., https://abciptv.com" autocomplete="off">
+                    <small style="color: #ff9800; margin-top: 4px; display: block;"><i class="bi bi-info-circle"></i> Providing the website helps identify the provider</small>
                 </div>
                 <div class="input-group">
-                    <label class="input-label"><i class="bi bi-link-45deg"></i> IPTV URL</label>
-                    <input type="text" id="urlInput" placeholder="e.g., http://iptv.example.com:8080/playlist.m3u8" autocomplete="off">
+                    <label class="input-label"><i class="bi bi-link-45deg"></i> IPTV URL <span style="color: #f44336;">*</span></label>
+                    <input type="text" id="urlInput" placeholder="e.g., http://iptv.example.com:8080/playlist.m3u8" autocomplete="off" required>
                 </div>
                 <button type="button" onclick="scanHost()"><i class="bi bi-search"></i> Scan Host</button>
             </div>
         </div>
-        <div class="loading-spinner" id="loadingSpinner">
+        <div class="loading-spinner" id="loadingSpinner" style="display: none;">
             <div class="spinner-border" role="status"><span class="visually-hidden">Loading...</span></div>
             <p style="margin-top: 15px; color: var(--text-secondary);">Scanning host...</p>
         </div>
-        <div class="results-container" id="resultsContainer">
-            <div class="empty-state">
-                <i class="bi bi-radar"></i>
-            </div>
+        <div class="results-container" id="resultsContainer" style="display: none;">
         </div>
         <div class="footer">
-            <p>IPTV Forensics Detective v1.0 | Results are cached for 24 hours</p>
+            <p style="margin: 0; font-size: 0.85em; color: var(--text-secondary);">
+                <a href="https://github.com/Nigel1992/IPTV-Detective" target="_blank" style="color: var(--accent-color); text-decoration: none; transition: color 0.3s;">
+                    <i class="bi bi-github"></i> Open Source on GitHub
+                </a>
+            </p>
         </div>
     </div>
     
@@ -536,6 +617,42 @@
                 <div class="empty-resellers">
                     <i class="bi bi-hourglass-split"></i>
                     <p>Loading reseller data...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Network Graph Modal -->
+    <div class="modal-overlay" id="networkModal" onclick="if(event.target.id==='networkModal') closeNetworkModal()">
+        <div class="reseller-modal" style="max-width: 90%; width: 1200px; max-height: 90vh;">
+            <div class="modal-header">
+                <div class="modal-title">
+                    <i class="bi bi-diagram-3"></i>
+                    <span id="networkModalTitle">Infrastructure Network Diagram</span>
+                </div>
+                <div class="modal-close" onclick="closeNetworkModal()">
+                    <i class="bi bi-x"></i>
+                </div>
+            </div>
+            <div style="overflow-y: auto; max-height: calc(90vh - 120px); padding: 20px;">
+                <div id="networkGraph"></div>
+                <div class="network-legend">
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: rgba(0, 212, 255, 0.5); color: var(--accent-color);"></div>
+                        <span>Domains in Network</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: rgba(0, 153, 204, 0.5); color: var(--accent-color);"></div>
+                        <span>Infrastructure (IPs/DNS)</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: rgba(245, 158, 11, 0.5); color: var(--warning-color);"></div>
+                        <span>Shared Connections</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: rgba(16, 185, 129, 0.5); color: var(--success-color);"></div>
+                        <span>High Confidence Evidence</span>
+                    </div>
                 </div>
             </div>
         </div>
@@ -579,10 +696,25 @@
             const url = urlInput.value.trim();
             const providerName = providerNameInput.value.trim();
             const providerWebsite = providerWebsiteInput.value.trim();
+            
+            // Validate IPTV URL (mandatory)
             if (!url) {
-                showError('Please enter a URL');
+                showError('❌ IPTV URL is required');
                 return;
             }
+            
+            // Validate provider name (mandatory)
+            if (!providerName) {
+                showError('❌ Provider name is required');
+                return;
+            }
+            
+            // Warn if provider website is missing (highly recommended)
+            if (!providerWebsite) {
+                const proceed = confirm('⚠️ Provider Website is highly recommended for accurate identification.\n\nContinue without it?');
+                if (!proceed) return;
+            }
+            
             loadingSpinner.style.display = 'block';
             resultsContainer.innerHTML = '';
             try {
@@ -894,30 +1026,33 @@
                                     ${escapeHtml(reseller.name)}
                                 </div>
                                 <div class="reseller-stats">
-                                    <div class="reseller-stat">
+                                    <div class="reseller-stat tooltip-hover" data-tooltip="Number of domains linked to this provider">
                                         <strong>${reseller.domain_count || 0}</strong> domains
                                     </div>
-                                    <div class="reseller-stat">
+                                    <div class="reseller-stat tooltip-hover" data-tooltip="Number of unique IP addresses hosting these domains">
                                         <strong>${reseller.unique_ips || (reseller.ips ? reseller.ips.length : 0)}</strong> IPs
                                     </div>
-                                    <div class="reseller-stat" style="background: rgba(0, 212, 255, 0.1); padding: 4px 8px; border-radius: 4px; border-left: 3px solid ${confColor};">
+                                    <div class="reseller-stat tooltip-hover" data-tooltip="Probability this is a reseller based on infrastructure patterns" style="background: rgba(0, 212, 255, 0.1); padding: 4px 8px; border-radius: 4px; border-left: 3px solid ${confColor};">
                                         <strong style="color: ${confColor};">${confidence}%</strong> <span style="font-size: 0.85em;">Confidence</span>
                                     </div>
+                                    <button class="network-btn" onclick="showNetworkDiagram('${btoa(JSON.stringify(reseller))}')">
+                                        <i class="bi bi-diagram-3"></i> View Connections
+                                    </button>
                                 </div>
                             </div>
                             
                             ${reseller.cluster_evidence && (reseller.cluster_evidence.asn_clustering > 1 || reseller.cluster_evidence.nameserver_clustering > 1 || reseller.cluster_evidence.cert_clustering > 1) ? `
                                 <div style="margin: 10px 0; padding: 10px; background: rgba(245, 158, 11, 0.1); border-left: 3px solid var(--warning-color); border-radius: 4px; font-size: 0.9em;">
-                                    <strong><i class="bi bi-link-45deg"></i> Cluster Evidence:</strong><br>
-                                    ${reseller.cluster_evidence.asn_clustering > 1 ? `<span style="display: inline-block; margin: 2px 4px; padding: 2px 6px; background: rgba(0,212,255,0.2); border-radius: 3px;">ASN Shared (${reseller.cluster_evidence.asn_clustering})</span>` : ''}
-                                    ${reseller.cluster_evidence.nameserver_clustering > 1 ? `<span style="display: inline-block; margin: 2px 4px; padding: 2px 6px; background: rgba(0,212,255,0.2); border-radius: 3px;">NS Shared (${reseller.cluster_evidence.nameserver_clustering})</span>` : ''}
-                                    ${reseller.cluster_evidence.cert_clustering > 1 ? `<span style="display: inline-block; margin: 2px 4px; padding: 2px 6px; background: rgba(0,212,255,0.2); border-radius: 3px;">SSL Shared (${reseller.cluster_evidence.cert_clustering})</span>` : ''}
-                                    ${reseller.cluster_evidence.registration_pattern_clustering > 1 ? `<span style="display: inline-block; margin: 2px 4px; padding: 2px 6px; background: rgba(16,185,129,0.2); border-radius: 3px;">Batch Reg (${reseller.cluster_evidence.registration_pattern_clustering})</span>` : ''}
+                                    <strong class="tooltip-hover" data-tooltip="Evidence that multiple domains share infrastructure (indicates reselling)"><i class="bi bi-link-45deg"></i> Cluster Evidence:</strong><br>
+                                    ${reseller.cluster_evidence.asn_clustering > 1 ? `<span class="tooltip-hover" data-tooltip="Domains sharing the same network provider (ASN)" style="display: inline-block; margin: 2px 4px; padding: 2px 6px; background: rgba(0,212,255,0.2); border-radius: 3px;">ASN Shared (${reseller.cluster_evidence.asn_clustering})</span>` : ''}
+                                    ${reseller.cluster_evidence.nameserver_clustering > 1 ? `<span class="tooltip-hover" data-tooltip="Domains using identical DNS nameservers" style="display: inline-block; margin: 2px 4px; padding: 2px 6px; background: rgba(0,212,255,0.2); border-radius: 3px;">NS Shared (${reseller.cluster_evidence.nameserver_clustering})</span>` : ''}
+                                    ${reseller.cluster_evidence.cert_clustering > 1 ? `<span class="tooltip-hover" data-tooltip="Domains using the same SSL certificate" style="display: inline-block; margin: 2px 4px; padding: 2px 6px; background: rgba(0,212,255,0.2); border-radius: 3px;">SSL Shared (${reseller.cluster_evidence.cert_clustering})</span>` : ''}
+                                    ${reseller.cluster_evidence.registration_pattern_clustering > 1 ? `<span class="tooltip-hover" data-tooltip="Domains registered in bulk at the same time" style="display: inline-block; margin: 2px 4px; padding: 2px 6px; background: rgba(16,185,129,0.2); border-radius: 3px;">Batch Reg (${reseller.cluster_evidence.registration_pattern_clustering})</span>` : ''}
                                 </div>
                             ` : ''}
                             
                             <div class="reseller-domains">
-                                <div class="reseller-section-title">
+                                <div class="reseller-section-title tooltip-hover" data-tooltip="All domains detected as part of this reseller network">
                                     <i class="bi bi-globe2"></i> Associated Domains (${(reseller.domains ? reseller.domains.length : 0)})
                                 </div>
                                 <div style="display: flex; flex-direction: column; gap: 10px; max-height: 400px; overflow-y: auto;">
@@ -929,7 +1064,7 @@
                                             </div>
                                             ${d.ip ? `<div style="font-size: 0.85em; color: var(--text-secondary);"><i class="bi bi-hdd-network"></i> ${escapeHtml(d.ip)}</div>` : ''}
                                             ${d.panel_type ? `<div style="font-size: 0.85em; color: var(--success-color);"><i class="bi bi-check-circle"></i> ${escapeHtml(d.panel_type)}</div>` : ''}
-                                            ${d.confidence ? `<div style="font-size: 0.80em; color: var(--text-secondary); margin-top: 3px;"><i class="bi bi-percent"></i> ${d.confidence}% Confidence</div>` : ''}
+                                            ${d.confidence ? `<div style="font-size: 0.80em; color: var(--text-secondary); margin-top: 3px;" class="tooltip-hover" data-tooltip="How confident we are this domain belongs to this reseller network"><i class="bi bi-percent"></i> ${d.confidence}% Confidence</div>` : ''}
                                         </div>
                                     `).join('')}
                                 </div>
@@ -937,7 +1072,7 @@
                             
                             ${reseller.related_providers && reseller.related_providers.length > 0 ? `
                                 <div class="upstream-connections">
-                                    <div class="reseller-section-title">
+                                    <div class="reseller-section-title tooltip-hover" data-tooltip="Other providers sharing domains with this network (possible upstream sources)">
                                         <i class="bi bi-arrow-up-circle"></i> Related Providers (${reseller.related_providers.length})
                                     </div>
                                     ${reseller.related_providers.map(up => `
@@ -1149,6 +1284,145 @@
                 closeResellersModal();
             }
         });
+
+        function closeNetworkModal() {
+            const modal = document.getElementById('networkModal');
+            modal.classList.remove('active');
+        }
+
+        function showNetworkDiagram(encodedData) {
+            try {
+                const reseller = JSON.parse(atob(encodedData));
+                const modal = document.getElementById('networkModal');
+                document.getElementById('networkModalTitle').textContent = `Infrastructure Connections - ${escapeHtml(reseller.name)}`;
+                modal.classList.add('active');
+
+                const container = document.getElementById('networkGraph');
+                container.innerHTML = '';
+
+                // Create SVG for visualization
+                const width = container.offsetWidth;
+                const height = 600;
+                const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+                svg.setAttribute('width', width);
+                svg.setAttribute('height', height);
+                svg.style.background = 'rgba(0, 0, 0, 0.3)';
+                svg.style.borderRadius = '8px';
+
+                // Central circle for reseller
+                const centerX = width / 2;
+                const centerY = 100;
+                const radius = 40;
+
+                // Draw central node
+                const centerCircle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+                centerCircle.setAttribute('cx', centerX);
+                centerCircle.setAttribute('cy', centerY);
+                centerCircle.setAttribute('r', radius);
+                centerCircle.setAttribute('fill', 'rgba(0, 212, 255, 0.7)');
+                centerCircle.setAttribute('stroke', 'var(--accent-color)');
+                centerCircle.setAttribute('stroke-width', '2');
+                centerCircle.style.cursor = 'pointer';
+                centerCircle.title = reseller.name;
+                svg.appendChild(centerCircle);
+
+                // Add text to central node
+                const centerText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                centerText.setAttribute('x', centerX);
+                centerText.setAttribute('y', centerY + 5);
+                centerText.setAttribute('text-anchor', 'middle');
+                centerText.setAttribute('fill', 'white');
+                centerText.setAttribute('font-size', '12');
+                centerText.setAttribute('font-weight', 'bold');
+                centerText.textContent = reseller.name.substring(0, 25);
+                svg.appendChild(centerText);
+
+                // Draw domain nodes in a circle
+                const domains = (reseller.domains || []).slice(0, 12);
+                const domainRadius = Math.min(width, height) / 3;
+                const angleStep = (2 * Math.PI) / Math.max(domains.length, 1);
+
+                domains.forEach((domain, idx) => {
+                    const angle = idx * angleStep;
+                    const x = centerX + domainRadius * Math.cos(angle);
+                    const y = centerY + 150 + domainRadius * Math.sin(angle);
+
+                    // Draw line from center to domain
+                    const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                    line.setAttribute('x1', centerX);
+                    line.setAttribute('y1', centerY);
+                    line.setAttribute('x2', x);
+                    line.setAttribute('y2', y);
+                    line.setAttribute('stroke', 'rgba(0, 212, 255, 0.3)');
+                    line.setAttribute('stroke-width', '1');
+                    svg.appendChild(line);
+
+                    // Draw domain node
+                    const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+                    circle.setAttribute('cx', x);
+                    circle.setAttribute('cy', y);
+                    circle.setAttribute('r', '20');
+                    circle.setAttribute('fill', 'rgba(0, 212, 255, 0.5)');
+                    circle.setAttribute('stroke', 'rgba(0, 212, 255, 0.8)');
+                    circle.setAttribute('stroke-width', '2');
+                    circle.style.cursor = 'pointer';
+                    circle.title = domain.domain + (domain.ip ? ` (${domain.ip})` : '');
+                    svg.appendChild(circle);
+
+                    // Add domain text
+                    const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                    text.setAttribute('x', x);
+                    text.setAttribute('y', y + 4);
+                    text.setAttribute('text-anchor', 'middle');
+                    text.setAttribute('fill', 'white');
+                    text.setAttribute('font-size', '10');
+                    text.setAttribute('pointer-events', 'none');
+                    text.textContent = domain.domain.substring(0, 12);
+                    svg.appendChild(text);
+                });
+
+                // Add legend info
+                const legendY = height - 100;
+                const legends = [
+                    { color: 'rgba(0, 212, 255, 0.7)', label: 'Reseller Network', x: 20 },
+                    { color: 'rgba(0, 212, 255, 0.5)', label: 'Associated Domains', x: 250 }
+                ];
+
+                legends.forEach(leg => {
+                    const rect = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+                    rect.setAttribute('cx', leg.x + 10);
+                    rect.setAttribute('cy', legendY);
+                    rect.setAttribute('r', '6');
+                    rect.setAttribute('fill', leg.color);
+                    svg.appendChild(rect);
+
+                    const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                    text.setAttribute('x', leg.x + 25);
+                    text.setAttribute('y', legendY + 5);
+                    text.setAttribute('fill', 'rgba(255, 255, 255, 0.7)');
+                    text.setAttribute('font-size', '12');
+                    text.textContent = leg.label;
+                    svg.appendChild(text);
+                });
+
+                // Add confidence info
+                const confidence = reseller.confidence_score || 0;
+                const confText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                confText.setAttribute('x', width - 20);
+                confText.setAttribute('y', 30);
+                confText.setAttribute('text-anchor', 'end');
+                confText.setAttribute('fill', confidence >= 80 ? 'var(--success-color)' : confidence >= 60 ? 'var(--warning-color)' : 'var(--text-secondary)');
+                confText.setAttribute('font-size', '14');
+                confText.setAttribute('font-weight', 'bold');
+                confText.textContent = `Confidence: ${confidence}%`;
+                svg.appendChild(confText);
+
+                container.appendChild(svg);
+            } catch (e) {
+                console.error('Error displaying network:', e);
+                document.getElementById('networkGraph').innerHTML = '<div style="padding: 20px; color: var(--text-secondary);"><i class="bi bi-exclamation-triangle"></i> Error loading diagram</div>';
+            }
+        }
     </script>
 </body>
 </html>
