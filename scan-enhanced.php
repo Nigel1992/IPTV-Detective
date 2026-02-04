@@ -642,11 +642,18 @@ class IPTVScan {
             $sslData = $this->getSSLCertificateData($domain);
             $ssl_cert_hash = $this->hashSSLCert($sslData);
 
+            $asn_block = null;
+            if (!empty($resolved_ip)) {
+                $ipInfo = $this->fetchIPInfo($resolved_ip);
+                $asnData = $this->analyzeASN($resolved_ip, $ipInfo['asn'] ?? null);
+                $asn_block = $asnData['asn_block'] ?? null;
+            }
+
             return [
                 'resolved_ip' => $resolved_ip,
                 'nameserver_hash' => $nameserver_hash,
                 'ssl_cert_hash' => $ssl_cert_hash,
-                'asn_block' => null,
+                'asn_block' => $asn_block,
                 'domain_registrar' => null,
                 'registration_pattern' => null
             ];
