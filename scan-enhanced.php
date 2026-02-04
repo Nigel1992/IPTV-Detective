@@ -685,10 +685,21 @@ class IPTVScan {
     }
 
     private function resolveIP($domain) {
-        $ip = gethostbyname($domain);
-        if ($ip === $domain) return null;
-        if (!filter_var($ip, FILTER_VALIDATE_IP)) return null;
-        return $ip;
+        try {
+            $ip = gethostbyname($domain);
+            if ($ip === $domain) {
+                return null;
+            }
+            if (!filter_var($ip, FILTER_VALIDATE_IP)) {
+                return null;
+            }
+            if ($ip === '0.0.0.0' || $ip === '' || $ip === false) {
+                return null;
+            }
+            return $ip;
+        } catch (Exception $e) {
+            return null;
+        }
     }
 
     private function fetchIPInfo($ip) {
