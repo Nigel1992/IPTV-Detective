@@ -453,7 +453,7 @@ class IPTVScan {
                        GROUP_CONCAT(a.alias_name SEPARATOR ' | ') AS aliases
                 FROM baseline_services b
                 LEFT JOIN service_aliases a ON a.baseline_id = b.id
-                WHERE b.status IN ('active', 'pending')
+                WHERE b.status IN ('active', 'pending', 'approved')
                 GROUP BY b.id
                 LIMIT 200
             ");
