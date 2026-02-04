@@ -260,3 +260,5 @@ Provided as-is for forensic and security analysis.
 ---
 **Version**: 1.0  
 **Last Updated**: February 2026
+\n# Another test commit with more content Wed Feb  4 13:29:45 CET 2026
+Some more lines to make this a bigger commit.
