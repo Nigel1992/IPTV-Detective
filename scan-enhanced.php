@@ -75,7 +75,7 @@ class IPTVScan {
 
             $ip = $this->resolveIP($domain);
             if (!$ip) {
-                return $this->respondError("Failed to resolve IP", 400);
+                return $this->respondError("Please input valid URL", 400);
             }
 
             // Collect all enhanced data
