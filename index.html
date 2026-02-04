@@ -570,6 +570,7 @@
         
         <div class="search-container">
             <div class="search-box">
+                <div id="errorContainer" style="display: none; margin-bottom: 15px;"></div>
                 <div class="input-group">
                     <label class="input-label"><i class="bi bi-tag"></i> Provider Name <span style="color: #f44336;">*</span></label>
                     <input type="text" id="providerNameInput" placeholder="e.g., ABC IPTV, MyStream Pro" autocomplete="off" required>
@@ -666,6 +667,7 @@
         const providerWebsiteInput = document.getElementById('providerWebsiteInput');
         const loadingSpinner = document.getElementById('loadingSpinner');
         const resultsContainer = document.getElementById('resultsContainer');
+        const errorContainer = document.getElementById('errorContainer');
         
         // Load stats on page load
         async function loadStats() {
@@ -954,8 +956,8 @@
             resultsContainer.innerHTML = html;
         }
         function showError(message) {
-            resultsContainer.style.display = 'block';
-            resultsContainer.innerHTML = `
+            errorContainer.style.display = 'block';
+            errorContainer.innerHTML = `
                 <div class="error-message">
                     <i class="bi bi-exclamation-circle"></i>
                     <div>
