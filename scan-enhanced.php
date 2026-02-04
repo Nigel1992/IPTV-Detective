@@ -12,6 +12,7 @@ ini_set('log_errors', 1);
 class IPTVScan {
     private $db;
     private $known_datacenters = [];
+    private $webserver_ip = null;
     private $datacenter_asns = [
         '14061' => 'DigitalOcean',
         '16509' => 'Amazon AWS',
@@ -684,18 +685,52 @@ class IPTVScan {
         return preg_replace('/^www\./', '', $domain);
     }
 
+    private function getWebserverIP() {
+        if ($this->webserver_ip !== null) {
+            return $this->webserver_ip;
+        }
+        
+        // Try multiple methods to get webserver IP
+        if (!empty($_SERVER['SERVER_ADDR'])) {
+            $this->webserver_ip = $_SERVER['SERVER_ADDR'];
+        } elseif (!empty($_SERVER['LOCAL_ADDR'])) {
+            $this->webserver_ip = $_SERVER['LOCAL_ADDR'];
+        } else {
+            // Fallback: resolve the server hostname
+            $hostname = gethostname();
+            if ($hostname) {
+                $this->webserver_ip = gethostbyname($hostname);
+            }
+        }
+        
+        return $this->webserver_ip;
+    }
+
     private function resolveIP($domain) {
         try {
             $ip = gethostbyname($domain);
+            
+            // Fail if domain couldn't be resolved
             if ($ip === $domain) {
                 return null;
             }
+            
+            // Fail if not a valid IP
             if (!filter_var($ip, FILTER_VALIDATE_IP)) {
                 return null;
             }
+            
+            // Fail if invalid/reserved IPs
             if ($ip === '0.0.0.0' || $ip === '' || $ip === false) {
                 return null;
             }
+            
+            // CRITICAL: Reject if resolved to webserver's own IP
+            $webserver_ip = $this->getWebserverIP();
+            if ($webserver_ip && $ip === $webserver_ip) {
+                return null;
+            }
+            
             return $ip;
         } catch (Exception $e) {
             return null;
