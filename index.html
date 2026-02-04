@@ -806,6 +806,9 @@
             const resellerClass = resellerDetected ? 'yes' : 'no';
             const createdAt = new Date().toLocaleString();
             
+            errorContainer.style.display = 'none';
+            resultsContainer.style.display = 'block';
+            
             let providerNameHtml = '';
             if (data.provider_name && typeof data.provider_name === 'string') {
                 const providers = data.provider_name.split(' | ');
