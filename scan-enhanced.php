@@ -95,7 +95,7 @@ class IPTVScan {
             $regConfidence = $this->calculateRegistrationConfidence($domainRegData, $existing, $domainAge);
 
             // Check for baseline matches
-            $baselineMatches = $this->checkBaselineMatches($nsHash, $sslHash, $asnData['asn_block'] ?? null, $domainRegData);
+            $baselineMatches = $this->checkBaselineMatches($domain, $nsHash, $sslHash, $asnData['asn_block'] ?? null, $domainRegData);
 
             // Build comprehensive data
             $providers = $this->buildProviderList($provider_name, $existing);
@@ -442,15 +442,18 @@ class IPTVScan {
         return $providers;
     }
 
-    private function checkBaselineMatches($nsHash, $sslHash, $asnBlock, $domainRegData) {
+    private function checkBaselineMatches($domain, $nsHash, $sslHash, $asnBlock, $domainRegData) {
         $matches = [];
         
         try {
             $stmt = $this->db->prepare("
-                SELECT b.id, b.service_name, b.baseline_domain 
+                SELECT b.id, b.service_name, b.baseline_domain,
+                       GROUP_CONCAT(a.alias_name SEPARATOR ' | ') AS aliases
                 FROM baseline_services b
-                WHERE b.status = 'active'
-                LIMIT 100
+                LEFT JOIN service_aliases a ON a.baseline_id = b.id
+                WHERE b.status IN ('active', 'pending')
+                GROUP BY b.id
+                LIMIT 200
             ");
             
             if (!$stmt) return $matches;
@@ -459,8 +462,22 @@ class IPTVScan {
             $result = $stmt->get_result();
             
             while ($baseline = $result->fetch_assoc()) {
+                $aliases = !empty($baseline['aliases']) ? explode(' | ', $baseline['aliases']) : [];
+
+                // Direct domain match (highest confidence)
+                if (!empty($baseline['baseline_domain']) && $baseline['baseline_domain'] === $domain) {
+                    $matches[] = [
+                        'baseline_id' => $baseline['id'],
+                        'baseline_name' => $baseline['service_name'],
+                        'aliases' => $aliases,
+                        'type' => 'direct_domain',
+                        'match_reason' => 'Direct domain match with baseline',
+                        'confidence' => 95
+                    ];
+                }
+
                 // Fetch baseline's scanned data from history
-                $baselineData = $this->getBaselineData($baseline['baseline_domain']);
+                $baselineData = !empty($baseline['baseline_domain']) ? $this->getBaselineData($baseline['baseline_domain']) : null;
                 if (!$baselineData) continue;
                 
                 // Check nameserver match
@@ -468,6 +485,7 @@ class IPTVScan {
                     $matches[] = [
                         'baseline_id' => $baseline['id'],
                         'baseline_name' => $baseline['service_name'],
+                        'aliases' => $aliases,
                         'type' => 'nameserver',
                         'match_reason' => 'Same nameserver configuration',
                         'confidence' => 85
@@ -479,6 +497,7 @@ class IPTVScan {
                     $matches[] = [
                         'baseline_id' => $baseline['id'],
                         'baseline_name' => $baseline['service_name'],
+                        'aliases' => $aliases,
                         'type' => 'ssl_cert',
                         'match_reason' => 'Same SSL certificate',
                         'confidence' => 90
@@ -490,6 +509,7 @@ class IPTVScan {
                     $matches[] = [
                         'baseline_id' => $baseline['id'],
                         'baseline_name' => $baseline['service_name'],
+                        'aliases' => $aliases,
                         'type' => 'asn',
                         'match_reason' => 'Same ASN block',
                         'confidence' => 70
@@ -497,10 +517,11 @@ class IPTVScan {
                 }
                 
                 // Check registrar match
-                if ($domainRegData['registrar'] && $baselineData['domain_registrar'] === $domainRegData['registrar']) {
+                if (!empty($domainRegData['registrar']) && $baselineData['domain_registrar'] === $domainRegData['registrar']) {
                     $matches[] = [
                         'baseline_id' => $baseline['id'],
                         'baseline_name' => $baseline['service_name'],
+                        'aliases' => $aliases,
                         'type' => 'registrar',
                         'match_reason' => 'Same domain registrar',
                         'confidence' => 65

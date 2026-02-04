@@ -876,10 +876,36 @@
                     </div>
                 `;
             }
+
+            let baselineMatchesHtml = '';
+            if (Array.isArray(data.baseline_matches) && data.baseline_matches.length > 0) {
+                const matchItems = data.baseline_matches.map(match => {
+                    const aliasText = (Array.isArray(match.aliases) && match.aliases.length > 0)
+                        ? ` <span style="color: var(--text-secondary);">(aliases: ${escapeHtml(match.aliases.join(', '))})</span>`
+                        : '';
+                    return `
+                        <li style="margin-bottom: 6px;">
+                            <strong>${escapeHtml(match.baseline_name || 'Baseline')}</strong>${aliasText}
+                            — ${escapeHtml(match.match_reason || 'Matched')}
+                            <span style="color: var(--accent-color); font-weight: 600;">(${match.confidence || 0}% confidence)</span>
+                        </li>
+                    `;
+                }).join('');
+
+                baselineMatchesHtml = `
+                    <div class="alert alert-warning" style="background: rgba(245, 158, 11, 0.12); border: 1px solid #f59e0b; color: #fbbf24; margin-bottom: 20px;">
+                        <strong><i class="bi bi-shield-check"></i> Baseline Match Detected</strong>
+                        <ul style="margin: 8px 0 0 0; padding-left: 20px;">
+                            ${matchItems}
+                        </ul>
+                    </div>
+                `;
+            }
             
             const html = `
                 <div class="result-card">
                     ${providerNameHtml}
+                    ${baselineMatchesHtml}
                     <div class="card-header-section">
                         <div>
                             <h3 class="card-title">${escapeHtml(data.domain)}</h3>
