@@ -13,6 +13,7 @@ class IPTVScan {
     private $db;
     private $known_datacenters = [];
     private $webserver_ip = null;
+    private $blocked_ips = ['185.27.134.24'];
     private $datacenter_asns = [
         '14061' => 'DigitalOcean',
         '16509' => 'Amazon AWS',
@@ -728,6 +729,11 @@ class IPTVScan {
             // CRITICAL: Reject if resolved to webserver's own IP
             $webserver_ip = $this->getWebserverIP();
             if ($webserver_ip && $ip === $webserver_ip) {
+                return null;
+            }
+            
+            // CRITICAL: Reject if resolved to blocked IPs (hosting server)
+            if (in_array($ip, $this->blocked_ips, true)) {
                 return null;
             }
             
