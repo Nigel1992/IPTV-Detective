@@ -94,6 +94,9 @@ class IPTVScan {
             $certConfidence = $this->calculateCertConfidence($sslHash, $existing);
             $regConfidence = $this->calculateRegistrationConfidence($domainRegData, $existing, $domainAge);
 
+            // Check for baseline matches
+            $baselineMatches = $this->checkBaselineMatches($nsHash, $sslHash, $asnData['asn_block'] ?? null, $domainRegData);
+
             // Build comprehensive data
             $providers = $this->buildProviderList($provider_name, $existing);
             $compositeConfidence = $this->calculateCompositeConfidence(
@@ -103,6 +106,16 @@ class IPTVScan {
                 $regConfidence,
                 count($providers)
             );
+            
+            // Boost confidence if baselines match
+            if (!empty($baselineMatches)) {
+                $compositeConfidence = min(100, $compositeConfidence + (count($baselineMatches) * 15));
+                foreach ($baselineMatches as $match) {
+                    if ($match['type'] === 'nameserver') $nsConfidence = min(100, $nsConfidence + 20);
+                    if ($match['type'] === 'ssl_cert') $certConfidence = min(100, $certConfidence + 20);
+                    if ($match['type'] === 'asn') $asnConfidence = min(100, $asnConfidence + 15);
+                }
+            }
 
             $data = [
                 'provider_name' => implode(' | ', $providers),
@@ -139,7 +152,8 @@ class IPTVScan {
                 ),
                 'is_datacenter_reseller' => ($asnConfidence > 60) ? 1 : 0,
                 'is_likely_upstream' => ($compositeConfidence > 75 && $domainAge > 365) ? 1 : 0,
-                'upstream_score' => $compositeConfidence
+                'upstream_score' => $compositeConfidence,
+                'baseline_matches' => $baselineMatches
             ];
 
             $this->saveToDatabase($data);
@@ -424,6 +438,107 @@ class IPTVScan {
         if ($providerName && !in_array($providerName, $providers)) {
             $providers[] = $providerName;
         }
+
+        return $providers;
+    }
+
+    private function checkBaselineMatches($nsHash, $sslHash, $asnBlock, $domainRegData) {
+        $matches = [];
+        
+        try {
+            $stmt = $this->db->prepare("
+                SELECT b.id, b.service_name, b.baseline_domain 
+                FROM baseline_services b
+                WHERE b.status = 'active'
+                LIMIT 100
+            ");
+            
+            if (!$stmt) return $matches;
+            
+            $stmt->execute();
+            $result = $stmt->get_result();
+            
+            while ($baseline = $result->fetch_assoc()) {
+                // Fetch baseline's scanned data from history
+                $baselineData = $this->getBaselineData($baseline['baseline_domain']);
+                if (!$baselineData) continue;
+                
+                // Check nameserver match
+                if ($nsHash && $baselineData['nameserver_hash'] === $nsHash) {
+                    $matches[] = [
+                        'baseline_id' => $baseline['id'],
+                        'baseline_name' => $baseline['service_name'],
+                        'type' => 'nameserver',
+                        'match_reason' => 'Same nameserver configuration',
+                        'confidence' => 85
+                    ];
+                }
+                
+                // Check SSL certificate match
+                if ($sslHash && $baselineData['ssl_cert_hash'] === $sslHash) {
+                    $matches[] = [
+                        'baseline_id' => $baseline['id'],
+                        'baseline_name' => $baseline['service_name'],
+                        'type' => 'ssl_cert',
+                        'match_reason' => 'Same SSL certificate',
+                        'confidence' => 90
+                    ];
+                }
+                
+                // Check ASN match
+                if ($asnBlock && $baselineData['asn_block'] === $asnBlock) {
+                    $matches[] = [
+                        'baseline_id' => $baseline['id'],
+                        'baseline_name' => $baseline['service_name'],
+                        'type' => 'asn',
+                        'match_reason' => 'Same ASN block',
+                        'confidence' => 70
+                    ];
+                }
+                
+                // Check registrar match
+                if ($domainRegData['registrar'] && $baselineData['domain_registrar'] === $domainRegData['registrar']) {
+                    $matches[] = [
+                        'baseline_id' => $baseline['id'],
+                        'baseline_name' => $baseline['service_name'],
+                        'type' => 'registrar',
+                        'match_reason' => 'Same domain registrar',
+                        'confidence' => 65
+                    ];
+                }
+            }
+            
+            $stmt->close();
+        } catch (Exception $e) {
+            // Silently fail, baselines are optional
+        }
+        
+        return $matches;
+    }
+
+    private function getBaselineData($domain) {
+        try {
+            $stmt = $this->db->prepare("
+                SELECT nameserver_hash, ssl_cert_hash, asn_block, domain_registrar, registration_pattern
+                FROM scanned_hosts 
+                WHERE domain = ?
+                ORDER BY created_at DESC
+                LIMIT 1
+            ");
+            
+            if (!$stmt) return null;
+            
+            $stmt->bind_param("s", $domain);
+            $stmt->execute();
+            $result = $stmt->get_result();
+            $data = $result->fetch_assoc();
+            $stmt->close();
+            
+            return $data;
+        } catch (Exception $e) {
+            return null;
+        }
+    }
 
         return $providers;
     }
