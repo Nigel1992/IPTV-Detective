@@ -40,6 +40,32 @@ $msg = ''; $msg_type = 'success';
 $action = $_POST['action'] ?? '';
 $tab = $_GET['tab'] ?? 'dashboard';
 
+function upsert_scanned_host_for_baseline($db, $domain, $providerName) {
+    if (!$domain) return;
+
+    $originalUrl = preg_match('/^https?:\/\//i', $domain) ? $domain : 'http://' . $domain;
+    $resolved_ip = gethostbyname($domain);
+    if ($resolved_ip === $domain) {
+        $resolved_ip = '0.0.0.0';
+    }
+
+    $providerName = $providerName ?: $domain;
+    $stmt = $db->prepare(
+        "INSERT INTO scanned_hosts (provider_name, provider_count, original_url, domain, resolved_ip, created_at)
+         VALUES (?, 1, ?, ?, ?, NOW())
+         ON DUPLICATE KEY UPDATE
+            provider_name=VALUES(provider_name),
+            original_url=VALUES(original_url),
+            resolved_ip=VALUES(resolved_ip),
+            updated_at=NOW()"
+    );
+    if ($stmt) {
+        $stmt->bind_param("ssss", $providerName, $originalUrl, $domain, $resolved_ip);
+        $stmt->execute();
+        $stmt->close();
+    }
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     switch ($action) {
         case 'create_baseline':
@@ -50,7 +76,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             
             $stmt = $db->prepare("INSERT INTO baseline_services (service_name, baseline_domain, credentials_hash, status, created_at) VALUES (?, ?, ?, ?, NOW())");
             $stmt->bind_param("ssss",$n,$d,$credentials_hash,$st);
-            $msg = $stmt->execute() ? "✓ Baseline created!" : "Error: " . $stmt->error;
+            if ($stmt->execute()) {
+                upsert_scanned_host_for_baseline($db, $d, $n);
+                $msg = "✓ Baseline created!";
+            } else {
+                $msg = "Error: " . $stmt->error;
+            }
             break;
         case 'delete_baseline':
             $stmt = $db->prepare("DELETE FROM baseline_services WHERE id=?");
@@ -95,12 +126,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     if ($stmt2) {
                         $stmt2->bind_param("sss", $name, $scan['domain'], $credentials_hash);
                         $stmt2->execute();
+                        upsert_scanned_host_for_baseline($db, $scan['domain'], $name);
                         $msg = "✓ Promoted to baseline!";
                     } else {
                         // Fallback without credentials_hash
                         $stmt2 = $db->prepare("INSERT INTO baseline_services (service_name, baseline_domain, status, created_at) VALUES (?, ?, 'approved', NOW())");
                         $stmt2->bind_param("ss", $name, $scan['domain']);
                         $stmt2->execute();
+                        upsert_scanned_host_for_baseline($db, $scan['domain'], $name);
                         $msg = "✓ Promoted to baseline!";
                     }
                 } catch (Exception $e) {
