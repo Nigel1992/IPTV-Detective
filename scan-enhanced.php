@@ -94,9 +94,6 @@ class IPTVScan {
             $certConfidence = $this->calculateCertConfidence($sslHash, $existing);
             $regConfidence = $this->calculateRegistrationConfidence($domainRegData, $existing, $domainAge);
 
-            // Check for baseline matches
-            $baselineMatches = $this->checkBaselineMatches($domain, $ip, $nsHash, $sslHash, $asnData['asn_block'] ?? null, $domainRegData);
-
             // Build comprehensive data
             $providers = $this->buildProviderList($provider_name, $existing);
             $compositeConfidence = $this->calculateCompositeConfidence(
@@ -106,6 +103,10 @@ class IPTVScan {
                 $regConfidence,
                 count($providers)
             );
+
+            // Check for baseline matches
+            $domainRegData['provider_name_lookup'] = implode(' | ', $providers ?? []);
+            $baselineMatches = $this->checkBaselineMatches($domain, $ip, $nsHash, $sslHash, $asnData['asn_block'] ?? null, $domainRegData);
             
             // Boost confidence if baselines match
             if (!empty($baselineMatches)) {
@@ -464,6 +465,7 @@ class IPTVScan {
             
             while ($baseline = $result->fetch_assoc()) {
                 $aliases = !empty($baseline['aliases']) ? explode(' | ', $baseline['aliases']) : [];
+                $baselineName = $baseline['service_name'] ?? '';
 
                 // Direct domain match (highest confidence)
                 if (!empty($baseline['baseline_domain']) && $baseline['baseline_domain'] === $domain) {
@@ -489,8 +491,39 @@ class IPTVScan {
                     ];
                 }
 
+                // Provider name match (soft match)
+                if (!empty($baselineName) && !empty($domainRegData['provider_name_lookup'])) {
+                    $providerLookup = $domainRegData['provider_name_lookup'];
+                    if (stripos($providerLookup, $baselineName) !== false) {
+                        $matches[] = [
+                            'baseline_id' => $baseline['id'],
+                            'baseline_name' => $baseline['service_name'],
+                            'aliases' => $aliases,
+                            'type' => 'provider_name',
+                            'match_reason' => 'Provider name contains baseline name',
+                            'confidence' => 55
+                        ];
+                    }
+                    foreach ($aliases as $alias) {
+                        if (!empty($alias) && stripos($providerLookup, $alias) !== false) {
+                            $matches[] = [
+                                'baseline_id' => $baseline['id'],
+                                'baseline_name' => $baseline['service_name'],
+                                'aliases' => $aliases,
+                                'type' => 'provider_name',
+                                'match_reason' => 'Provider name contains baseline alias',
+                                'confidence' => 50
+                            ];
+                            break;
+                        }
+                    }
+                }
+
                 // Fetch baseline's scanned data from history
                 $baselineData = !empty($baseline['baseline_domain']) ? $this->getBaselineData($baseline['baseline_domain']) : null;
+                if (!$baselineData && !empty($baseline['baseline_domain'])) {
+                    $baselineData = $this->resolveBaselineSignals($baseline['baseline_domain']);
+                }
                 if (!$baselineData) continue;
                                 // Check resolved IP match
                                 if (!empty($resolvedIp) && !empty($baselineData['resolved_ip']) && $baselineData['resolved_ip'] === $resolvedIp) {
@@ -580,6 +613,31 @@ class IPTVScan {
             $stmt->close();
             
             return $data;
+        } catch (Exception $e) {
+            return null;
+        }
+    }
+
+    private function resolveBaselineSignals($domain) {
+        try {
+            $resolved_ip = gethostbyname($domain);
+            if ($resolved_ip === $domain) {
+                $resolved_ip = null;
+            }
+
+            $nameservers = $this->getNameservers($domain);
+            $nameserver_hash = $this->hashNameservers($nameservers);
+            $sslData = $this->getSSLCertificateData($domain);
+            $ssl_cert_hash = $this->hashSSLCert($sslData);
+
+            return [
+                'resolved_ip' => $resolved_ip,
+                'nameserver_hash' => $nameserver_hash,
+                'ssl_cert_hash' => $ssl_cert_hash,
+                'asn_block' => null,
+                'domain_registrar' => null,
+                'registration_pattern' => null
+            ];
         } catch (Exception $e) {
             return null;
         }
