@@ -540,9 +540,6 @@ class IPTVScan {
         }
     }
 
-        return $providers;
-    }
-
     private function getExistingRecord($domain) {
         $stmt = $this->db->prepare("SELECT * FROM scanned_hosts WHERE domain = ?");
         if (!$stmt) return null;
