@@ -521,8 +521,20 @@ class IPTVScan {
 
                 // Fetch baseline's scanned data from history
                 $baselineData = !empty($baseline['baseline_domain']) ? $this->getBaselineData($baseline['baseline_domain']) : null;
-                if (!$baselineData && !empty($baseline['baseline_domain'])) {
-                    $baselineData = $this->resolveBaselineSignals($baseline['baseline_domain']);
+                if (!empty($baseline['baseline_domain'])) {
+                    if (!$baselineData) {
+                        $baselineData = $this->resolveBaselineSignals($baseline['baseline_domain']);
+                    } else {
+                        $needsFallback = empty($baselineData['nameserver_hash'])
+                            && empty($baselineData['ssl_cert_hash'])
+                            && empty($baselineData['resolved_ip']);
+                        if ($needsFallback) {
+                            $fallback = $this->resolveBaselineSignals($baseline['baseline_domain']);
+                            if ($fallback) {
+                                $baselineData = array_merge($baselineData, array_filter($fallback));
+                            }
+                        }
+                    }
                 }
                 if (!$baselineData) continue;
                                 // Check resolved IP match
